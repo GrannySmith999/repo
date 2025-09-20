@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => { 
     const registerForm = document.getElementById('register-form');
     const notificationArea = document.getElementById('notification-area');
-
+ 
     registerForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const username = e.target.elements['new-username'].value.trim();
