@@ -14,6 +14,7 @@ let database = {
             email: 'janedoe@example.com',
             role: 'user',
             balance: 5.00,
+            agreement: null, // Will hold agreement details
             credits: 50,
             tasks: [
                 { 
@@ -42,6 +43,7 @@ let database = {
             email: 'johnsmith@example.com',
             role: 'user',
             balance: 15.00,
+            agreement: null,
             credits: 25,
             tasks: [
                 { 
@@ -59,7 +61,7 @@ let database = {
             name: 'admin',
             email: 'admin@example.com',
             status: 'active',
-            role: 'admin', balance: 0, credits: 999, tasks: [], history: []
+            role: 'admin', balance: 0, credits: 999, tasks: [], history: [], agreement: null
         }
     },
 };
@@ -248,12 +250,46 @@ mainNav.addEventListener('click', (e) => {
         if (pageId === 'history') {
             renderHistory();
         }
+        if (pageId === 'agreement') {
+            populateAgreementForm();
+        }
+        if (pageId === 'info') {
+            // No special function needed, the content is static HTML
+        }
         if (pageId === 'admin') {
             // Re-render the admin table every time the page is viewed
             renderUserManagementTable();
         }
     }
 });
+
+document.getElementById('agreement-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const agreementDetails = {
+        fullName: form.elements['full-name'].value,
+        addressLine1: form.elements['address-line1'].value,
+        city: form.elements.city.value,
+        country: form.elements.country.value,
+        submittedAt: new Date().toISOString()
+    };
+
+    // Save details to the current user's state
+    appState.agreement = agreementDetails;
+    saveState();
+
+    addNotification('Your freelancer agreement details have been saved successfully.', 'success');
+});
+
+function populateAgreementForm() {
+    if (appState.agreement) {
+        const form = document.getElementById('agreement-form');
+        form.elements['full-name'].value = appState.agreement.fullName || '';
+        form.elements['address-line1'].value = appState.agreement.addressLine1 || '';
+        form.elements.city.value = appState.agreement.city || '';
+        form.elements.country.value = appState.agreement.country || '';
+    }
+}
 
 document.getElementById('admin-credit-form').addEventListener('submit', (e) => {
     e.preventDefault();
