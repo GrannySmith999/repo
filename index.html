@@ -13,6 +13,14 @@
         header h1 { margin: 0; }
         nav a { color: white; text-decoration: none; margin-left: 1rem; }
         main { padding: 1rem; }
+        .main-nav { display: flex; justify-content: center; background-color: #f0f0f0; padding: 0.5rem; border-bottom: 1px solid #ddd; }
+        .main-nav button { background-color: transparent; border: 1px solid var(--primary-color); color: var(--primary-color); margin: 0 0.5rem; padding: 0.5rem 1rem; font-size: 1rem; border-radius: 20px; cursor: pointer; }
+        .main-nav button.active { background-color: var(--primary-color); color: white; }
+        .main-nav button:hover { background-color: #e9f2fa; }
+        .main-nav button.active:hover { background-color: #3a80d2; }
+        .page { display: none; } /* Hide all pages by default */
+        .page.active { display: block; } /* Show only the active page */
+
         .dashboard-section { background-color: white; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .dashboard-section h2 { margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
         .notification { padding: 1rem; margin-bottom: 1rem; background-color: #e9f2fa; border-left: 4px solid var(--primary-color); }
@@ -28,9 +36,38 @@
         .hidden { display: none; }
         .user-info { display: flex; align-items: center; }
         .user-info span { margin-right: 1rem; }
+
+        /* Modal Styles */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: white; padding: 2rem; border-radius: 8px; width: 90%; max-width: 400px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .modal-content h2 { margin-top: 0; text-align: center; }
+        .modal-content .form-toggle { text-align: center; margin-top: 1rem; }
+        .modal-content .form-toggle a { color: var(--primary-color); cursor: pointer; text-decoration: underline; }
     </style>
 </head>
 <body>
+
+    <!-- Login/Register Modal -->
+    <div id="auth-modal" class="modal-overlay">
+        <div class="modal-content">
+            <!-- Login Form -->
+            <form id="login-form">
+                <h2>Login</h2>
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required>
+                <button type="submit">Login</button>
+                <div class="form-toggle">Don't have an account? <a id="show-register-link">Create one</a></div>
+            </form>
+            <!-- Register Form (hidden by default) -->
+            <form id="register-form" class="hidden">
+                <h2>Create Account</h2>
+                <label for="new-username">Username</label>
+                <input type="text" id="new-username" name="new-username" required>
+                <button type="submit">Create Account</button>
+                <div class="form-toggle">Already have an account? <a id="show-login-link">Login</a></div>
+            </form>
+        </div>
+    </div>
 
     <header>
         <h1>Task Platform</h1>
@@ -45,6 +82,14 @@
     </header>
 
     <main>
+        <!-- Main Navigation to switch between pages -->
+        <nav class="main-nav" id="main-nav">
+            <button data-page="tasks" class="active">Tasks</button>
+            <button data-page="stats">Stats</button>
+            <button data-page="withdraw">Withdrawal</button>
+            <button data-page="deposit">Deposit</button>
+        </nav>
+
         <!-- Notifications Section -->
         <section id="notifications" class="dashboard-section">
             <h2>Notifications</h2>
@@ -52,58 +97,64 @@
                 <!-- Notifications will be added here dynamically -->
             </div>
         </section>
-
-        <!-- Tasks Section -->
-        <section id="tasks-section" class="dashboard-section">
-            <h2>Available Tasks</h2>
-            <div id="task-list">
-                <!-- Tasks will be added here dynamically -->
+        
+        <!-- Page Container -->
+        <div id="page-container">
+            <!-- Tasks Page -->
+            <div id="page-tasks" class="page active">
+                <section id="tasks-section" class="dashboard-section">
+                    <h2>Available Tasks</h2>
+                    <div id="task-list">
+                        <!-- Tasks will be added here dynamically -->
+                    </div>
+                </section>
             </div>
-        </section>
 
-        <!-- Admin Panel (hidden by default) -->
-        <section id="admin-panel" class="dashboard-section admin-panel hidden">
-            <h2>Admin Panel</h2>
-            <p>Manually adjust user balance.</p>
-            <form id="admin-credit-form">
-                <label for="credit-amount">Amount to Add/Remove (+/-)</label>
-                <input type="number" id="credit-amount" name="credit-amount" placeholder="e.g., 50 or -25" step="0.01" required>
-                <button type="submit">Update Balance</button>
-            </form>
-        </section>
+            <!-- Stats Page -->
+            <div id="page-stats" class="page">
+                <section id="stats-section" class="dashboard-section">
+                    <h2>Stats & Earnings</h2>
+                    <p>Your current balance is: <strong id="current-balance">$0.00</strong></p>
+                    <!-- More stats can be added here later -->
+                </section>
+            </div>
 
-        <!-- Withdraw Funds Section -->
-        <section id="withdraw" class="dashboard-section">
-            <h2>Withdraw Funds</h2>
-            <p>Your current balance: <strong id="current-balance">$125.50</strong></p>
-            <form id="withdraw-form">
-                <label for="amount">Amount to Withdraw ($)</label>
-                <input type="number" id="amount" name="amount" placeholder="e.g., 50.00" min="1" step="0.01" required>
+            <!-- Withdrawal Page -->
+            <div id="page-withdraw" class="page">
+                <section id="withdraw" class="dashboard-section">
+                    <h2>Withdraw Funds</h2>
+                    <form id="withdraw-form">
+                        <label for="amount">Amount to Withdraw ($)</label>
+                        <input type="number" id="amount" name="amount" placeholder="e.g., 50.00" min="1" step="0.01" required>
+                        <label for="payment-method">Payment Method</label>
+                        <select id="payment-method" name="payment-method" required>
+                            <option value="">--Please choose an option--</option>
+                            <option value="paypal">PayPal</option>
+                            <option value="bank-transfer">Bank Transfer</option>
+                        </select>
+                        <button type="submit">Request Withdrawal</button>
+                    </form>
+                </section>
+            </div>
 
-                <label for="payment-method">Payment Method</label>
-                <select id="payment-method" name="payment-method" required>
-                    <option value="">--Please choose an option--</option>
-                    <option value="paypal">PayPal</option>
-                    <option value="bank-transfer">Bank Transfer</option>
-                    <option value="crypto">Cryptocurrency</option>
-                </select>
-
-                <button type="submit">Request Withdrawal</button>
-            </form>
-        </section>
-
-        <!-- A simple login form, which you could show on a separate page or in a modal -->
-        <!-- For now, it's commented out as the main view is for a logged-in user -->
-        <!--
-        <section id="login" class="dashboard-section">
-            <h2>Login</h2>
-            <form> ... login form fields ... </form>
-        </section>
-        -->
+            <!-- Deposit Page (Admin Controlled) -->
+            <div id="page-deposit" class="page">
+                <section id="admin-panel" class="dashboard-section admin-panel">
+                    <h2>Deposit Funds (Admin)</h2>
+                    <p>This function is for administrators to manually credit user accounts.</p>
+                    <form id="admin-credit-form">
+                        <label for="credit-amount">Amount to Add (+)</label>
+                        <input type="number" id="credit-amount" name="credit-amount" placeholder="e.g., 50" step="0.01" required min="0">
+                        <button type="submit">Credit Account</button>
+                    </form>
+                </section>
+            </div>
+        </div>
     </main>
 
     <!-- Link to the external JavaScript file -->
     <!-- The 'defer' attribute ensures the script runs after the HTML document has been parsed. -->
     <script src="app.js" defer></script>
 </body>
+
 </html>
