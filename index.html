@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Dashboard - Get Paid for Tasks</title>
+    <style>
+        /* General Enhancements */
+        :root { --primary-color: #4a90e2; --success-color: #34a853; --error-color: #d9534f; }
+        /* Basic styling for layout and clarity */
+        body { font-family: sans-serif; margin: 0; background-color: #f4f4f9; color: #333; }
+        header { background-color: #4a90e2; color: white; padding: 1rem; display: flex; justify-content: space-between; align-items: center; }
+        header h1 { margin: 0; }
+        nav a { color: white; text-decoration: none; margin-left: 1rem; }
+        main { padding: 1rem; }
+        .dashboard-section { background-color: white; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .dashboard-section h2 { margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
+        .notification { padding: 1rem; margin-bottom: 1rem; background-color: #e9f2fa; border-left: 4px solid var(--primary-color); }
+        .notification.success { background-color: #e6f4e9; border-left-color: var(--success-color); }
+        .notification.error { background-color: #fbe9e8; border-left-color: var(--error-color); }
+        form { display: flex; flex-direction: column; }
+        label { margin-bottom: 0.5rem; font-weight: bold; }
+        input, select { padding: 0.75rem; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 1rem; font-size: 1rem; }
+        button { background-color: #34a853; color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; align-self: flex-start; }
+        button:hover { background-color: #2c8b47; }
+        .task { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 1rem; }
+        .admin-panel { border: 2px dashed var(--error-color); background-color: #fff8f8; }
+        .hidden { display: none; }
+        .user-info { display: flex; align-items: center; }
+        .user-info span { margin-right: 1rem; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Task Platform</h1>
+        <nav>
+            <!-- This section would show user info after login -->
+            <div id="user-info" class="user-info">
+                <span>Welcome, User!</span>
+                <a href="#logout">Logout</a>
+            </div>
+            <!-- You could show a "Login" link here if the user is not authenticated -->
+        </nav>
+    </header>
+
+    <main>
+        <!-- Notifications Section -->
+        <section id="notifications" class="dashboard-section">
+            <h2>Notifications</h2>
+            <div id="notification-list">
+                <!-- Notifications will be added here dynamically -->
+            </div>
+        </section>
+
+        <!-- Tasks Section -->
+        <section id="tasks-section" class="dashboard-section">
+            <h2>Available Tasks</h2>
+            <div id="task-list">
+                <!-- Tasks will be added here dynamically -->
+            </div>
+        </section>
+
+        <!-- Admin Panel (hidden by default) -->
+        <section id="admin-panel" class="dashboard-section admin-panel hidden">
+            <h2>Admin Panel</h2>
+            <p>Manually adjust user balance.</p>
+            <form id="admin-credit-form">
+                <label for="credit-amount">Amount to Add/Remove (+/-)</label>
+                <input type="number" id="credit-amount" name="credit-amount" placeholder="e.g., 50 or -25" step="0.01" required>
+                <button type="submit">Update Balance</button>
+            </form>
+        </section>
+
+        <!-- Withdraw Funds Section -->
+        <section id="withdraw" class="dashboard-section">
+            <h2>Withdraw Funds</h2>
+            <p>Your current balance: <strong id="current-balance">$125.50</strong></p>
+            <form id="withdraw-form">
+                <label for="amount">Amount to Withdraw ($)</label>
+                <input type="number" id="amount" name="amount" placeholder="e.g., 50.00" min="1" step="0.01" required>
+
+                <label for="payment-method">Payment Method</label>
+                <select id="payment-method" name="payment-method" required>
+                    <option value="">--Please choose an option--</option>
+                    <option value="paypal">PayPal</option>
+                    <option value="bank-transfer">Bank Transfer</option>
+                    <option value="crypto">Cryptocurrency</option>
+                </select>
+
+                <button type="submit">Request Withdrawal</button>
+            </form>
+        </section>
+
+        <!-- A simple login form, which you could show on a separate page or in a modal -->
+        <!-- For now, it's commented out as the main view is for a logged-in user -->
+        <!--
+        <section id="login" class="dashboard-section">
+            <h2>Login</h2>
+            <form> ... login form fields ... </form>
+        </section>
+        -->
+    </main>
+
+    <!-- Link to the external JavaScript file -->
+    <!-- The 'defer' attribute ensures the script runs after the HTML document has been parsed. -->
+    <script src="app.js" defer></script>
+</body>
+</html>
