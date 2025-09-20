@@ -1,7 +1,7 @@
-document.addEventListener('DOMContentLoaded', () => { 
+document.addEventListener('DOMContentLoaded', () => {
     const registerForm = document.getElementById('register-form');
     const notificationArea = document.getElementById('notification-area');
- 
+
     registerForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const username = e.target.elements['new-username'].value.trim();
@@ -65,8 +65,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function showNotification(message, type) {
         notificationArea.innerHTML = ''; // Clear previous notifications
         const notification = document.createElement('div');
+        const title = type.charAt(0).toUpperCase() + type.slice(1);
         notification.className = `notification ${type}`;
-        notification.textContent = message;
+        notification.innerHTML = `<strong>${title}:</strong> ${message}`;
         notificationArea.appendChild(notification);
     }
 });
