@@ -25,11 +25,15 @@
         <div id="notification-area"></div>
         <form id="register-form">
             <h2>Create Account</h2>
-            <label for="new-username">Username</label>
-            <input type="text" id="new-username" name="new-username" required>
+            <label for="new-email">Email</label>
+            <input type="email" id="new-email" name="new-email" required autocomplete="email">
+            <label for="new-password">Password</label>
+            <input type="password" id="new-password" name="new-password" required autocomplete="new-password">
+            <label for="confirm-password">Confirm Password</label>
+            <input type="password" id="confirm-password" name="confirm-password" required autocomplete="new-password">
             <button type="submit">Create Account & Login</button>
             <div class="login-link">
-                Already have an account? <a href="index.html">Login here</a>
+                Already have an account? <a href="login.html">Login here</a>
             </div>
         </form>
     </div>
