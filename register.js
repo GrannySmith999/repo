@@ -43,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
             email: email, // Store the email as well
             status: 'active', // New users are active by default
             credits: 50, // New users start with 50 credits
+            agreement: null, // No agreement submitted initially
             role: 'user',
             balance: 5.00, // New users start with $5
             tasks: [
