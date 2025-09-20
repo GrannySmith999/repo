@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => { 
     const registerForm = document.getElementById('register-form');
     const notificationArea = document.getElementById('notification-area');
 
