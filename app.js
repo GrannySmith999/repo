@@ -3,30 +3,64 @@
 // We are simulating a database and a logged-in user state.
 
 let appState = {}; // This will hold the state for the CURRENTLY LOGGED IN user.
-
 // This simulates our multi-user database.
 let database = {
     users: {
-        "JaneDoe": {
+        // The key is now the user's email
+        "janedoe@example.com": {
+            password: 'password123',
             name: 'JaneDoe',
+            status: 'active', // 'active' or 'blocked'
+            email: 'janedoe@example.com',
             role: 'user',
             balance: 5.00,
+            credits: 50,
             tasks: [
-                { id: 1, description: 'Leave a positive comment on a YouTube video about travel.', status: 'available' },
-                { id: 2, description: 'Write a 4-star review for "Central Park" on a popular reviews site.', status: 'available' }
+                { 
+                    id: 1, 
+                    type: 'YouTube Comment',
+                    description: 'Leave a positive comment on a travel vlog.', 
+                    link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', // Example link
+                    instructions: 'Watch the video and leave a comment about your favorite part. Keep it positive and engaging.',
+                    status: 'available' // available, started, pending, completed
+                },
+                { 
+                    id: 2, 
+                    type: 'Google Review',
+                    description: 'Write a 5-star review for a local cafe.',
+                    link: 'https://www.google.com/maps/search/?api=1&query=cafe+near+me', // Example link
+                    instructions: 'Mention the friendly staff and the quality of the coffee in your review.',
+                    status: 'available' 
+                }
             ],
             history: []
         },
-        "JohnSmith": {
+        "johnsmith@example.com": {
+            password: 'password123',
             name: 'JohnSmith',
+            status: 'active',
+            email: 'johnsmith@example.com',
             role: 'user',
             balance: 15.00,
+            credits: 25,
             tasks: [
-                { id: 3, description: 'Post a supportive comment on our new Facebook page post.', status: 'available' },
+                { 
+                    id: 3, 
+                    type: 'Facebook Comment',
+                    description: 'Post a supportive comment on a new product launch.',
+                    link: 'https://www.facebook.com/', // Example link
+                    instructions: 'Comment on the post, mentioning how excited you are for the new product.',
+                    status: 'available' },
             ],
             history: []
         },
-        "admin": { name: 'admin', role: 'admin', balance: 0, tasks: [], history: [] }
+        "admin@example.com": {
+            password: 'admin',
+            name: 'admin',
+            email: 'admin@example.com',
+            status: 'active',
+            role: 'admin', balance: 0, credits: 999, tasks: [], history: []
+        }
     },
 };
 
@@ -37,11 +71,12 @@ const notificationList = document.getElementById('notification-list');
 const taskList = document.getElementById('task-list');
 const historyList = document.getElementById('history-list');
 const mainNav = document.getElementById('main-nav');
+const adminPage = document.getElementById('page-admin');
 const pages = document.querySelectorAll('.page');
 
 // Constants for task earnings
-const TASK_START_COST = 0.02;
-const TASK_COMPLETION_REWARD = 1.20;
+const TASK_CREDIT_COST = 1;
+const TASK_COMPLETION_REWARD = 0.10;
 
 // --- State Management Functions (with localStorage) ---
 function saveState() {
@@ -65,6 +100,7 @@ function logHistory(description, amount) {
 // --- UI Update Functions ---
 function updateBalanceUI() {
     balanceEl.innerText = `$${appState.balance.toFixed(2)}`;
+    userInfo.querySelector('.credits').textContent = `Credits: ${appState.credits}`;
 }
 
 function addNotification(message, type = 'info') { // type can be 'info', 'success', 'error'
@@ -83,17 +119,32 @@ function renderTasks() {
         const taskEl = document.createElement('div');
         taskEl.className = 'task';
 
-        if (task.status === 'available') {
+        // Base task info
+        let taskHTML = `
+            <div class="task-info">
+                <strong>${task.type}:</strong> ${task.description}<br>
+                <em>Instructions: ${task.instructions}</em>
+            </div>
+        `;
+
+        if (task.status === 'available') { // User can start the task
+            taskHTML += `<button data-task-id="${task.id}" data-action="start">Start Task (Cost: ${TASK_CREDIT_COST} Credit)</button>`;
+        } else if (task.status === 'started') { // Task is in progress, user needs to submit proof
             taskEl.innerHTML = `
-                <span>${task.description}</span>
-                <button data-task-id="${task.id}" data-action="start">Start Task (Cost: $${TASK_START_COST.toFixed(2)})</button>
+                ${taskHTML}
+                <div class="task-submission">
+                    <a href="${task.link}" target="_blank">Go to Task Link</a>
+                    <textarea data-task-id="${task.id}" placeholder="Paste the link to your comment/review here as proof."></textarea>
+                    <button data-task-id="${task.id}" data-action="finish">Submit for Review</button>
+                </div>
             `;
-        } else if (task.status === 'started') {
-            taskEl.innerHTML = `
-                <span>${task.description} (In Progress)</span>
-                <button data-task-id="${task.id}" data-action="finish">Finish Task (Reward: $${TASK_COMPLETION_REWARD.toFixed(2)})</button>
-            `;
+        } else if (task.status === 'pending') { // Task is awaiting admin approval
+            taskHTML += `<span><strong>Status:</strong> Pending Review</span>`;
         }
+
+        // Only set innerHTML if it wasn't already set for the 'started' case
+        if (task.status !== 'started') taskEl.innerHTML = taskHTML;
+
         taskList.appendChild(taskEl);
     });
 }
@@ -144,22 +195,31 @@ taskList.addEventListener('click', (e) => {
         if (!task) return;
 
         if (action === 'start') {
-            if (appState.balance < TASK_START_COST) {
-                return addNotification('Insufficient balance to start the task.', 'error');
+            if (appState.credits < TASK_CREDIT_COST) {
+                return addNotification('You do not have enough credits to start this task.', 'error');
             }
-            appState.balance -= TASK_START_COST;
+            appState.credits -= TASK_CREDIT_COST;
             task.status = 'started';
             updateBalanceUI();
-            logHistory(`Started task: "${task.description}"`, -TASK_START_COST);
+            logHistory(`Used ${TASK_CREDIT_COST} credit for task: "${task.description}"`, 0); // Logging credit use, no monetary change
             stateChanged = true;
-            addNotification(`Task started. $${TASK_START_COST.toFixed(2)} has been deducted.`, 'info');
+            addNotification(`Task started! ${TASK_CREDIT_COST} credit has been used.`, 'info');
         } else if (action === 'finish') {
-            appState.balance += TASK_COMPLETION_REWARD;
-            task.status = 'completed'; // Mark as completed
-            updateBalanceUI();
-            logHistory(`Finished task: "${task.description}"`, TASK_COMPLETION_REWARD);
+            const submissionText = document.querySelector(`textarea[data-task-id="${taskId}"]`).value;
+            if (!submissionText || submissionText.trim().length < 10) {
+                return addNotification('Please provide valid proof of completion (e.g., a link or description).', 'error');
+            }
+
+            task.status = 'pending'; // Mark as pending for admin review
+            task.submission = submissionText; // Store the user's submission
+
+            // In a real app, the reward is given only after admin approval.
+            // For this prototype, we'll give the reward immediately to show the flow.
+            appState.balance += TASK_COMPLETION_REWARD; 
+            updateBalanceUI(); 
+            logHistory(`Task submitted for review: "${task.description}"`, TASK_COMPLETION_REWARD);
             stateChanged = true;
-            addNotification(`Task finished! $${TASK_COMPLETION_REWARD.toFixed(2)} has been credited to your account.`, 'success');
+            addNotification(`Task submitted for review! $${TASK_COMPLETION_REWARD.toFixed(2)} has been credited.`, 'success');
         }
 
         if (stateChanged) {
@@ -187,6 +247,10 @@ mainNav.addEventListener('click', (e) => {
 
         if (pageId === 'history') {
             renderHistory();
+        }
+        if (pageId === 'admin') {
+            // Re-render the admin table every time the page is viewed
+            renderUserManagementTable();
         }
     }
 });
@@ -216,17 +280,81 @@ document.getElementById('admin-credit-form').addEventListener('submit', (e) => {
     e.target.reset();
 });
 
+userInfo.addEventListener('click', (e) => {
+    if (e.target.tagName === 'A' && e.target.getAttribute('href') === '#logout') {
+        e.preventDefault();
+        localStorage.removeItem('loggedInUser');
+        window.location.href = 'login.html';
+    }
+});
+
+adminPage.addEventListener('click', (e) => {
+    if (e.target.dataset.action === 'toggle-block') {
+        const userEmail = e.target.dataset.userEmail;
+        const user = database.users[userEmail];
+        if (user) {
+            // Toggle the user's status
+            user.status = user.status === 'active' ? 'blocked' : 'active';
+            saveState();
+            renderUserManagementTable(); // Re-render the table to show the change
+            addNotification(`User ${user.name} has been ${user.status}.`, 'success');
+        }
+    }
+});
+
+// --- Admin UI Functions ---
+function renderUserManagementTable() {
+    const container = document.getElementById('user-management-table');
+    let tableHTML = `
+        <table class="user-table">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Balance</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    for (const email in database.users) {
+        const user = database.users[email];
+        if (user.role === 'admin') continue; // Don't show admin in the list
+        const statusClass = user.status === 'blocked' ? 'status-blocked' : '';
+        const buttonText = user.status === 'active' ? 'Block' : 'Unblock';
+        tableHTML += `
+            <tr>
+                <td>${user.name}</td>
+                <td>${user.email}</td>
+                <td>$${user.balance.toFixed(2)}</td>
+                <td class="${statusClass}">${user.status.charAt(0).toUpperCase() + user.status.slice(1)}</td>
+                <td><button data-action="toggle-block" data-user-email="${email}">${buttonText}</button></td>
+            </tr>
+        `;
+    }
+    tableHTML += `</tbody></table>`;
+    container.innerHTML = tableHTML;
+}
+
 // --- Initialization Function ---
 function populateAdminUserDropdown() {
     const adminForm = document.getElementById('admin-credit-form');
+    // Prevent adding duplicate dropdowns
+    const existingSelect = document.getElementById('user-select');
+    if (existingSelect) {
+        existingSelect.remove();
+    }
+
     const select = document.createElement('select');
-    select.id = 'user-select';
-    select.name = 'user-select';
+    select.id = 'user-select'; // The ID for the select element
+    select.name = 'user-select'; // The name attribute for the form
 
     let options = '<option value="">-- Select a User --</option>';
-    for (const username in database.users) {
-        if (database.users[username].role !== 'admin') { // Don't let admin credit themselves this way
-            options += `<option value="${username}">${username}</option>`;
+    for (const emailKey in database.users) {
+        const user = database.users[emailKey];
+        if (user.role !== 'admin') { // Don't let admin credit themselves this way
+            options += `<option value="${emailKey}">${user.name} (${emailKey})</option>`;
         }
     }
     select.innerHTML = options;
@@ -238,13 +366,14 @@ function populateAdminUserDropdown() {
 
 function initializeApp() {
     // Set user info
-    userInfo.querySelector('span').textContent = `Welcome, ${appState.currentUser.name}!`;
+    userInfo.querySelector('span').textContent = `Welcome, ${appState.name}!`;
 
     // Check role and show admin panel if applicable
     if (appState.currentUser.role === 'admin') {
-        userInfo.querySelector('span').textContent += ' (Admin)';
-        document.querySelector('button[data-page="deposit"]').style.display = 'inline-block';
+        userInfo.querySelector('span').textContent += ' (Admin)'; // Add admin tag to welcome message
+        document.querySelector('button[data-page="admin"]').style.display = 'inline-block'; // Show the Admin button in the nav
         populateAdminUserDropdown();
+        renderUserManagementTable();
     }
 
     // Initial UI setup
@@ -265,7 +394,7 @@ if (!loggedInUsername) {
     // If a user is logged in, load their data into the appState
     appState = database.users[loggedInUsername];
     // The key in the database is the email, which serves as the unique ID
-    appState.currentUser = { name: loggedInUsername, role: appState.role };
+    appState.currentUser = { name: appState.name, role: appState.role };
     initializeApp(); // Initialize the dashboard
 }
 
