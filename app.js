@@ -259,12 +259,12 @@ loadState(); // Load the entire database from localStorage
 const loggedInUsername = localStorage.getItem('loggedInUser');
 
 if (!loggedInUsername) {
-    // If no user is logged in, redirect to a login page (which we'll create next)
-    // For now, let's link to the new register page.
-    window.location.href = 'register.html';
+    // If no user is logged in, redirect to the login page.
+    window.location.href = 'login.html';
 } else if (database.users[loggedInUsername]) {
     // If a user is logged in, load their data into the appState
     appState = database.users[loggedInUsername];
+    // The key in the database is the email, which serves as the unique ID
     appState.currentUser = { name: loggedInUsername, role: appState.role };
     initializeApp(); // Initialize the dashboard
 }
