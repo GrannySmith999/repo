@@ -37,37 +37,9 @@
         .user-info { display: flex; align-items: center; }
         .user-info span { margin-right: 1rem; }
 
-        /* Modal Styles */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-        .modal-content { background: white; padding: 2rem; border-radius: 8px; width: 90%; max-width: 400px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
-        .modal-content h2 { margin-top: 0; text-align: center; }
-        .modal-content .form-toggle { text-align: center; margin-top: 1rem; }
-        .modal-content .form-toggle a { color: var(--primary-color); cursor: pointer; text-decoration: underline; }
     </style>
 </head>
 <body>
-
-    <!-- Login/Register Modal -->
-    <div id="auth-modal" class="modal-overlay">
-        <div class="modal-content">
-            <!-- Login Form -->
-            <form id="login-form">
-                <h2>Login</h2>
-                <label for="username">Username</label>
-                <input type="text" id="username" name="username" required>
-                <button type="submit">Login</button>
-                <div class="form-toggle">Don't have an account? <a id="show-register-link">Create one</a></div>
-            </form>
-            <!-- Register Form (hidden by default) -->
-            <form id="register-form" class="hidden">
-                <h2>Create Account</h2>
-                <label for="new-username">Username</label>
-                <input type="text" id="new-username" name="new-username" required>
-                <button type="submit">Create Account</button>
-                <div class="form-toggle">Already have an account? <a id="show-login-link">Login</a></div>
-            </form>
-        </div>
-    </div>
 
     <header>
         <h1>Task Platform</h1>
@@ -86,6 +58,7 @@
         <nav class="main-nav" id="main-nav">
             <button data-page="tasks" class="active">Tasks</button>
             <button data-page="stats">Stats</button>
+            <button data-page="history">History</button>
             <button data-page="withdraw">Withdrawal</button>
             <button data-page="deposit">Deposit</button>
         </nav>
@@ -116,6 +89,16 @@
                     <h2>Stats & Earnings</h2>
                     <p>Your current balance is: <strong id="current-balance">$0.00</strong></p>
                     <!-- More stats can be added here later -->
+                </section>
+            </div>
+
+            <!-- History Page -->
+            <div id="page-history" class="page">
+                <section id="history-section" class="dashboard-section">
+                    <h2>Transaction History</h2>
+                    <div id="history-list">
+                        <!-- History items will be added here dynamically -->
+                    </div>
                 </section>
             </div>
 
