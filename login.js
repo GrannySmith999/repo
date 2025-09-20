@@ -4,29 +4,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     loginForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        const email = e.target.elements.email.value.trim().toLowerCase();
+        const loginIdentifier = e.target.elements.email.value.trim(); // Can be email or username
         const password = e.target.elements.password.value;
 
         // Load existing database from localStorage
         const database = JSON.parse(localStorage.getItem('taskAppDatabase')) || { users: {} };
-        const user = database.users[email];
+
+        // Find user by either email or username
+        let user = null;
+        let userKey = null; // The key in the database is the email
+
+        for (const key in database.users) {
+            const potentialUser = database.users[key];
+            if (potentialUser.email.toLowerCase() === loginIdentifier.toLowerCase() || potentialUser.name.toLowerCase() === loginIdentifier.toLowerCase()) {
+                user = potentialUser;
+                userKey = key;
+                break;
+            }
+        }
 
         // --- Validation ---
         if (user && user.password === password) {
-            // "Log in" the user by saving their email
-            localStorage.setItem('loggedInUser', email);
-            // Redirect to the main dashboard
-            window.location.href = 'index.html';
-        } else {
-            showNotification('Invalid email or password.', 'error');
-        }
-    });
-
-    function showNotification(message, type) {
-        notificationArea.innerHTML = ''; // Clear previous notifications
-        const notification = document.createElement('div');
-        notification.className = `notification ${type}`;
-        notification.textContent = message;
-        notificationArea.appendChild(notification);
-    }
-});
+            if (user.status === 'blocked') {
+                return showNotification('This account has been suspended. Please contact support.', 'error');
+            }
+            // "Log in" the user by saving their primary key (email)
+   
