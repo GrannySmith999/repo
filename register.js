@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     registerForm.addEventListener('submit', (e) => {
         e.preventDefault();
+        const username = e.target.elements['new-username'].value.trim();
         const email = e.target.elements['new-email'].value.trim().toLowerCase();
         const password = e.target.elements['new-password'].value;
         const confirmPassword = e.target.elements['confirm-password'].value;
@@ -12,7 +13,15 @@ document.addEventListener('DOMContentLoaded', () => {
         let database = JSON.parse(localStorage.getItem('taskAppDatabase')) || { users: {} };
 
         // --- Validation ---
-        if (!email.includes('@') || !email.includes('.')) {
+        if (!username || username.length < 3) {
+            return showNotification('Username must be at least 3 characters long.', 'error');
+        }
+        // Check if username is already taken by iterating through users
+        const usernameExists = Object.values(database.users).some(user => user.name.toLowerCase() === username.toLowerCase());
+        if (usernameExists) {
+            return showNotification('This username is already taken.', 'error');
+        }
+        if (!email.includes('@') || !email.includes('.')) { // Basic email validation
             return showNotification('Please enter a valid email address.', 'error');
         }
         if (password.length < 6) {
@@ -28,10 +37,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- Create New User ---
         // WARNING: Storing passwords in plain text is insecure.
         // This is for prototyping only. A real app MUST hash passwords on a server.
-        const nameFromEmail = email.split('@')[0]; // Create a display name from the email
         database.users[email] = {
             password: password,
-            name: nameFromEmail,
+            name: username, // Store the chosen username
+            email: email, // Store the email as well
+            status: 'active', // New users are active by default
+            credits: 50, // New users start with 50 credits
             role: 'user',
             balance: 5.00, // New users start with $5
             tasks: [
