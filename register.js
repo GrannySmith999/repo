@@ -4,22 +4,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
     registerForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        const username = e.target.elements['new-username'].value.trim();
+        const email = e.target.elements['new-email'].value.trim().toLowerCase();
+        const password = e.target.elements['new-password'].value;
+        const confirmPassword = e.target.elements['confirm-password'].value;
 
         // Load existing database from localStorage or create a new one
         let database = JSON.parse(localStorage.getItem('taskAppDatabase')) || { users: {} };
 
         // --- Validation ---
-        if (!username || username.length < 3) {
-            return showNotification('Username must be at least 3 characters long.', 'error');
+        if (!email.includes('@') || !email.includes('.')) {
+            return showNotification('Please enter a valid email address.', 'error');
         }
-        if (database.users[username]) {
-            return showNotification('This username is already taken. Please choose another.', 'error');
+        if (password.length < 6) {
+            return showNotification('Password must be at least 6 characters long.', 'error');
+        }
+        if (password !== confirmPassword) {
+            return showNotification('Passwords do not match.', 'error');
+        }
+        if (database.users[email]) {
+            return showNotification('An account with this email already exists.', 'error');
         }
 
         // --- Create New User ---
-        database.users[username] = {
-            name: username,
+        // WARNING: Storing passwords in plain text is insecure.
+        // This is for prototyping only. A real app MUST hash passwords on a server.
+        const nameFromEmail = email.split('@')[0]; // Create a display name from the email
+        database.users[email] = {
+            password: password,
+            name: nameFromEmail,
             role: 'user',
             balance: 5.00, // New users start with $5
             tasks: [
@@ -32,8 +44,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- Save and Redirect ---
         // Save the updated database
         localStorage.setItem('taskAppDatabase', JSON.stringify(database));
-        // "Log in" the user by saving their username
-        localStorage.setItem('loggedInUser', username);
+        // "Log in" the user by saving their email
+        localStorage.setItem('loggedInUser', email);
 
         // Redirect to the main dashboard
         window.location.href = 'index.html';
