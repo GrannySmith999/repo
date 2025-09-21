@@ -500,7 +500,7 @@ if (!loggedInUsername) {
     appState = database.users[loggedInUsername];
     // The key in the database is the email, which serves as the unique ID
     checkAndResetDailyCounter(); // Check activity status on login
-    appState.currentUser = { name: appState.name, role: appState.role };
+    appState.currentUser = { name: appState.name, role: database.users[loggedInUsername].role };
     saveState(); // Save any changes from the daily check
     initializeApp(); // Initialize the dashboard
 }
