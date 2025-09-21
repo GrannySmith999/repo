@@ -105,7 +105,12 @@ renderTasks() {
         if (targetList) targetList.appendChild(taskEl);
     });
 
-    if (!hasInProgress) this.dom.inProgressTaskList.innerHTML = '<p>You have no tasks in progress. Reserve one from the marketplace!</p>';
+    if (!hasInProgress) {
+        const message = this.appState.credits === 0 
+            ? '<p>You have no credits. Please contact your supervisor to get credits and start working.</p>'
+            : '<p>You have no tasks in progress. Reserve one from the marketplace!</p>';
+        this.dom.inProgressTaskList.innerHTML = message;
+    }
     if (!hasPending) this.dom.pendingTaskList.innerHTML = '<p>You have no tasks pending review or approved.</p>';
     // Logic for rejected tasks can be added if a 'rejected' status is implemented
 },
@@ -115,7 +120,10 @@ renderMarketplaceTasks() {
     const userTaskIds = this.appState.tasks ? this.appState.tasks.map(t => t.id) : [];
 
     if (!this.marketplaceTasks || this.marketplaceTasks.length === 0) {
-        this.dom.marketplaceTaskList.innerHTML = '<p>No new tasks are available right now. The admin can generate more.</p>';
+        const message = this.appState.credits === 0 && this.appState.tasks.length === 0
+            ? '<p>You have no credits. Please contact your supervisor to get credits and start working.</p>'
+            : '<p>No new tasks are available right now. The admin can generate more.</p>';
+        this.dom.marketplaceTaskList.innerHTML = message;
         return;
     }
 
