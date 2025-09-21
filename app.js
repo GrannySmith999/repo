@@ -205,6 +205,11 @@ function renderMarketplaceTasks() {
             return;
         }
 
+        // Determine which button to show based on user role
+        const actionButton = isAdmin 
+            ? `<button data-task-id="${task.id}" data-action="assign-to-user" class="assign-btn">Assign to User</button>`
+            : `<button data-task-id="${task.id}" data-action="reserve">Reserve Task (1 Credit)</button>`;
+
         const taskEl = document.createElement('div');
         taskEl.className = 'task task-marketplace'; // Add a specific class for marketplace tasks
         taskEl.innerHTML = `
@@ -215,7 +220,7 @@ function renderMarketplaceTasks() {
                 <div class="task-body">
                     <p>${task.description}</p>
                     <div class="task-actions">
-                        <button data-task-id="${task.id}" data-action="reserve">Reserve Task (1 Credit)</button>
+                        ${actionButton}
                     </div>
                 </div>
             </div>
@@ -345,6 +350,25 @@ function handleTaskApproval(userEmail, taskId, isApproved) {
     }
     saveState();
     renderPendingTasks(); // Refresh the list
+}
+
+function handleAssignTaskToUser(taskId) {
+    const userEmail = prompt("Enter the email of the user to assign this task to:");
+    if (!userEmail || !database.users[userEmail]) {
+        return addNotification("User not found. Please enter a valid user email.", "error");
+    }
+
+    const user = database.users[userEmail];
+    const taskToAssign = database.marketplaceTasks.find(t => t.id === taskId);
+
+    if (taskToAssign) {
+        // Add the task to the user's personal list with 'available' status
+        const newTask = { ...taskToAssign, status: 'available' };
+        user.tasks.push(newTask);
+
+        saveState();
+        addNotification(`Task "${taskToAssign.description}" assigned to ${user.name}.`, 'success');
+    }
 }
 
 // --- Initialization Function ---
@@ -557,6 +581,10 @@ function attachEventListeners() {
                 renderMarketplaceTasks();
                 addNotification(`Task "${taskToReserve.description}" reserved successfully!`, 'success');
             }
+        } else if (e.target.dataset.action === 'assign-to-user') {
+            const taskId = parseInt(e.target.dataset.taskId);
+            handleAssignTaskToUser(taskId);
+            }
         }
     });
 
@@ -746,7 +774,7 @@ function attachEventListeners() {
 
         const newTasks = [];
         // Generate 5 of each type
-        for (let i = 0; i < 49; i++) { // Generate 98 tasks to stay under the 100/day limit
+        for (let i = 0; i < 5; i++) { // Generate 10 tasks
             newTasks.push(generateNewTaskFromAPI('YouTube Comment'));
             newTasks.push(generateNewTaskFromAPI('Google Review'));
         }
