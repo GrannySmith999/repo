@@ -334,7 +334,7 @@ populateAdminUserDropdown() {
  */
 async generateNewTaskFromAPI(taskType) {
     // In a real implementation, you would get these from a secure place.
-    const API_KEY = 'AIzaSyAJ7BSxkmwmps1rONBc22ETODDtwI_vY2Y'; // IMPORTANT: Replace with your new, secure key
+    const API_KEY = 'PASTE_YOUR_NEW_API_KEY_HERE'; // IMPORTANT: Replace with your new, secure key
     const SEARCH_ENGINE_ID = '01efd7843a7744ad0'; // Your Search Engine ID
 
     let query = '';
@@ -660,21 +660,21 @@ attachEventListeners() {
             this.addNotification(`${generatedTasks.length} new tasks have been generated!`, 'success');
         });
     }
-},
+
     const autoAssignForm = document.getElementById('auto-assign-form');
     if (autoAssignForm) {
         autoAssignForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const amountToAssign = parseInt(e.target.elements['auto-assign-amount'].value, 10);
-
+    
             if (isNaN(amountToAssign) || amountToAssign <= 0) {
                 return this.addNotification('Please enter a valid number of tasks to assign.', 'error');
             }
-
+    
             let assignedCount = 0;
             let userCount = 0;
             const availableMarketplaceTasks = [...this.marketplaceTasks];
-
+    
             for (const uid in this.allUsers) {
                 const user = this.allUsers[uid];
                 if (user.role === 'user' && user.status === 'active') {
@@ -757,4 +757,3 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
-
