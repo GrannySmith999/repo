@@ -56,6 +56,9 @@ const userInfo = document.getElementById('user-info');
 const balanceEl = document.getElementById('current-balance'); // Note: This element is on the Stats page
 const toastContainer = document.getElementById('toast-container');
 const taskList = document.getElementById('task-list');
+const inProgressTaskList = document.getElementById('in-progress-task-list');
+const pendingTaskList = document.getElementById('pending-task-list');
+const rejectedTaskList = document.getElementById('rejected-task-list');
 const historyList = document.getElementById('history-list');
 const mainNav = document.getElementById('main-nav');
 const adminPage = document.getElementById('page-admin');
@@ -119,11 +122,12 @@ function addNotification(message, type = 'info') { // type can be 'info', 'succe
 }
 
 function renderTasks() {
-    taskList.innerHTML = ''; // Clear existing tasks
-    if (appState.tasks.length === 0) {
-        taskList.innerHTML = '<p>You have no active tasks. Find new tasks in the marketplace!</p>';
-        return;
-    }
+    // Clear all task lists
+    inProgressTaskList.innerHTML = '';
+    pendingTaskList.innerHTML = '';
+    rejectedTaskList.innerHTML = '';
+
+    let hasInProgress = false, hasPending = false, hasRejected = false;
 
     appState.tasks.forEach(task => {
         const taskEl = document.createElement('div');
@@ -131,10 +135,13 @@ function renderTasks() {
 
         let statusBadge = '';
         let taskContent = '';
+        let targetList = null;
 
         if (task.status === 'available') {
             statusBadge = `<span class="status-badge" style="background-color: var(--success-color);">Available</span>`;
             taskContent = `<p>This task is ready for you to start!</p><div class="task-actions"><button data-task-id="${task.id}" data-action="start">Start Task (1 Credit)</button></div>`;
+            targetList = inProgressTaskList; // Show available tasks in the "In Progress" section
+            hasInProgress = true;
         } else if (task.status === 'started') {
             statusBadge = `<span class="status-badge" style="background-color: #f0ad4e;">In Progress</span>`;
             taskContent = `
@@ -147,12 +154,18 @@ function renderTasks() {
                     </div>
                 </div>
             `;
+            targetList = inProgressTaskList;
+            hasInProgress = true;
         } else if (task.status === 'pending') {
             statusBadge = `<span class="status-badge status-pending">Pending Review</span>`;
             taskContent = `<p><em>Your submission is awaiting admin approval. Thank you!</em></p>`;
+            targetList = pendingTaskList;
+            hasPending = true;
         } else if (task.status === 'completed') {
             statusBadge = `<span class="status-badge" style="background-color: var(--primary-color);">Approved</span>`;
             taskContent = `<p><em>This task was approved. Great job! 🥳</em></p>`;
+            targetList = pendingTaskList;
+            hasPending = true;
         }
 
         taskEl.innerHTML = `
@@ -167,9 +180,12 @@ function renderTasks() {
                 </div>
             </div>
         `;
-
-        taskList.appendChild(taskEl);
+        if (targetList) targetList.appendChild(taskEl);
     });
+
+    if (!hasInProgress) inProgressTaskList.innerHTML = '<p>You have no tasks in progress. Reserve one from the marketplace!</p>';
+    if (!hasPending) pendingTaskList.innerHTML = '<p>You have no tasks pending review or approved.</p>';
+    // Logic for rejected tasks can be added if a 'rejected' status is implemented
 }
 
 function renderMarketplaceTasks() {
@@ -214,9 +230,9 @@ function renderHistory() {
     }
     appState.history.forEach(item => {
         const itemEl = document.createElement('div');
-        itemEl.className = 'task'; // Re-using 'task' style for consistency
+        itemEl.className = 'history-item'; // Use a different class if needed
         const amountClass = item.amount >= 0 ? 'success' : 'error';
-        itemEl.innerHTML = `<span>${item.description}</span> <strong class="${amountClass}">$${item.amount.toFixed(2)}</strong>`;
+        itemEl.innerHTML = `<div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #4a4a68;"><span>${item.description}</span> <strong class="${amountClass}">$${item.amount.toFixed(2)}</strong></div>`;
         historyList.appendChild(itemEl);
     });
 }
@@ -321,8 +337,8 @@ function handleTaskApproval(userEmail, taskId, isApproved) {
         user.balance += TASK_COMPLETION_REWARD; // Pay the user upon approval
         logHistory(`Task approved: "${task.description}"`, TASK_COMPLETION_REWARD);
     } else {
-        task.status = 'started'; // Return task to user to re-submit
-        user.balance -= TASK_COMPLETION_REWARD; // Reclaim the reward
+        task.status = 'rejected'; // New status for rejected tasks
+        // user.balance -= TASK_COMPLETION_REWARD; // Reclaim the reward - decided not to reclaim for now
         logHistory(`Task rejected: "${task.description}"`, -TASK_COMPLETION_REWARD);
     }
     saveState();
@@ -473,7 +489,7 @@ function attachEventListeners() {
         e.target.reset();
     });
 
-    taskList.addEventListener('click', (e) => {
+    document.getElementById('page-tasks').addEventListener('click', (e) => {
         if (e.target.tagName === 'BUTTON') {
             // Find the task before making any changes
             const action = e.target.dataset.action;
@@ -516,11 +532,7 @@ function attachEventListeners() {
                 // Save the new state to localStorage
                 saveState();
             }
-        }
-    });
-
-    marketplaceTaskList.addEventListener('click', (e) => {
-        if (e.target.dataset.action === 'reserve') {
+        } else if (e.target.dataset.action === 'reserve') {
             if (appState.tasksAssignedToday >= appState.dailyTaskQuota) {
                 return addNotification(`You have reached your daily limit of ${appState.dailyTaskQuota} assigned tasks.`, 'error');
             }
