@@ -6,9 +6,28 @@ const ReviewMasterApp = {
     listenersAttached: false,
     dom: {}, // To hold DOM element references
 
-    // Constants for task earnings
-    TASK_CREDIT_COST: 1,
-    TASK_COMPLETION_REWARD: 0.10,
+    // Tiered System Configuration
+    tiers: {
+        'Basic': { earning: 0.20, creditCost: 1, unlockRequirement: 0 },
+        'Gold': { earning: 1.00, creditCost: 1, unlockRequirement: 100 },
+        'Platinum': { earning: 3.00, creditCost: 3, unlockRequirement: 500 },
+        'Diamond': { earning: 10.00, creditCost: 5, unlockRequirement: 1000 }
+    },
+
+    // Helper function to get current tier info
+    getCurrentTierInfo() {
+        const userTier = this.appState.tier || 'Basic';
+        return this.tiers[userTier];
+    },
+
+    // Helper function to check and update user's tier
+    updateUserTier() {
+        const creditsPurchased = this.appState.creditsPurchased || 0;
+        if (creditsPurchased >= 1000) this.appState.tier = 'Diamond';
+        else if (creditsPurchased >= 500) this.appState.tier = 'Platinum';
+        else if (creditsPurchased >= 100) this.appState.tier = 'Gold';
+        else this.appState.tier = 'Basic';
+    },
     
     saveAppState() {
         if (this.currentFirebaseUser) {
@@ -62,7 +81,7 @@ renderTasks() {
 
         if (task.status === 'available') {
             statusBadge = `<span class="status-badge" style="background-color: var(--success-color);">Available</span>`;
-            taskContent = `<p>This task is ready for you to start!</p><div class="task-actions"><button data-task-id="${task.id}" data-action="start">Start Task (1 Credit)</button></div>`;
+            taskContent = `<p>This task is ready for you to start!</p><div class="task-actions"><button data-task-id="${task.id}" data-action="start">Start Task (${this.getCurrentTierInfo().creditCost} Credits)</button></div>`;
             targetList = this.dom.inProgressTaskList; // Show available tasks in the "In Progress" section
             hasInProgress = true;
         } else if (task.status === 'started') {
@@ -121,12 +140,14 @@ renderMarketplaceTasks() {
     const userTaskIds = this.appState.tasks ? this.appState.tasks.map(t => t.id) : [];
 
     if (!this.marketplaceTasks || this.marketplaceTasks.length === 0) {
-        const message = this.appState.credits === 0 && this.appState.tasks.length === 0
+        const message = this.appState.credits === 0 && (!this.appState.tasks || this.appState.tasks.length === 0)
             ? '<p>You have no credits. Please contact your supervisor to get credits and start working.</p>'
             : '<p>No new tasks are available right now. The admin can generate more.</p>';
         this.dom.marketplaceTaskList.innerHTML = message;
         return;
     }
+
+    const userTierInfo = this.getCurrentTierInfo();
 
     this.marketplaceTasks.forEach(task => {
         // Don't show tasks the user has already reserved
@@ -135,9 +156,14 @@ renderMarketplaceTasks() {
         }
 
         const isAdmin = this.appState.role === 'admin';
+        // For users, only show tasks matching their tier. Admins see all.
+        if (!isAdmin && task.tier !== this.appState.tier) {
+            return;
+        }
+
         const actionButton = isAdmin 
             ? `<button data-task-id="${task.id}" data-action="assign-to-user" class="assign-btn">Assign to User</button>`
-            : `<button data-task-id="${task.id}" data-action="reserve">Reserve Task (1 Credit)</button>`;
+            : `<button data-task-id="${task.id}" data-action="reserve">Reserve Task (${userTierInfo.creditCost} Credits)</button>`;
 
         const taskEl = document.createElement('div');
         taskEl.className = 'task task-marketplace';
@@ -145,6 +171,7 @@ renderMarketplaceTasks() {
             <div class="task-info">
                 <div class="task-header">
                     <h4>${task.type}</h4>
+                    <span class="status-badge" style="background-color: #555;">${task.tier || 'Basic'} Tier</span>
                 </div>
                 <div class="task-body">
                     <p>${task.description}</p>
@@ -270,7 +297,8 @@ handleTaskApproval(userEmail, taskId, isApproved) {
 
     if (isApproved) {
         task.status = 'completed';
-        user.balance += this.TASK_COMPLETION_REWARD;
+        const tierInfo = this.tiers[task.tier] || this.tiers['Basic'];
+        user.balance += tierInfo.earning;
     } else {
         task.status = 'started'; // Return task to user to re-submit
         // We don't reclaim the money on rejection in this model
@@ -338,6 +366,14 @@ async generateNewTaskFromAPI(taskType) {
     const SEARCH_ENGINE_ID = '01efd7843a7744ad0'; // Your Search Engine ID
 
     let query = '';
+    let tier = 'Basic'; // Default tier
+
+    // Assign a tier to the generated task randomly for variety
+    const rand = Math.random();
+    if (rand > 0.9) tier = 'Diamond';
+    else if (rand > 0.7) tier = 'Platinum';
+    else if (rand > 0.4) tier = 'Gold';
+
     if (taskType === 'YouTube Comment') {
         query = 'inurl:youtube.com "travel vlog" "new york"';
     } else if (taskType === 'Google Review') {
@@ -359,6 +395,7 @@ async generateNewTaskFromAPI(taskType) {
                 description: `Perform a task for: ${firstResult.title}`,
                 link: firstResult.link,
                 instructions: `Please leave a positive and relevant ${taskType.toLowerCase()}.`,
+                tier: tier,
                 status: 'available'
             };
         }
@@ -443,13 +480,14 @@ attachEventListeners() {
             if (!task) return;
 
             if (action === 'start') {
-                if (this.appState.credits < this.TASK_CREDIT_COST) {
+                const creditCost = this.getCurrentTierInfo().creditCost;
+                if (this.appState.credits < creditCost) {
                     return this.addNotification('You do not have enough credits to start this task.', 'error');
                 }
-                this.appState.credits -= this.TASK_CREDIT_COST;
+                this.appState.credits -= creditCost;
                 task.status = 'started';
                 this.updateBalanceUI();
-                this.logHistory(`Used ${this.TASK_CREDIT_COST} credit for task: "${task.description}"`, 0); // Logging credit use, no monetary change
+                this.logHistory(`Used ${creditCost} credit for task: "${task.description}"`, 0); // Logging credit use, no monetary change
                 stateChanged = true;
                 this.addNotification(`Task started! ${this.TASK_CREDIT_COST} credit has been used.`, 'info');
             } else if (action === 'finish') {
@@ -486,7 +524,8 @@ attachEventListeners() {
             if (this.appState.tasksAssignedToday >= this.appState.dailyTaskQuota) {
                 return this.addNotification(`You have reached your daily limit of ${this.appState.dailyTaskQuota} assigned tasks.`, 'error');
             }
-            if (this.appState.credits < this.TASK_CREDIT_COST) {
+            const creditCost = this.getCurrentTierInfo().creditCost;
+            if (this.appState.credits < creditCost) {
                 return this.addNotification('You do not have enough credits to reserve this task.', 'error');
             }
 
@@ -494,7 +533,7 @@ attachEventListeners() {
             const taskToReserve = this.marketplaceTasks.find(t => t.id === taskId);
 
             if (taskToReserve) {
-                this.appState.credits -= this.TASK_CREDIT_COST;
+                this.appState.credits -= creditCost;
                 this.appState.tasksAssignedToday = (this.appState.tasksAssignedToday || 0) + 1;
 
                 const newTask = { ...taskToReserve, status: 'available' };
@@ -587,7 +626,9 @@ attachEventListeners() {
         // Find the user in the database and update their balance
         const userToCredit = this.allUsers[selectedUsername];
         if (userToCredit) {
-            userToCredit.credits += amount;
+            userToCredit.credits = (userToCredit.credits || 0) + amount;
+            userToCredit.creditsPurchased = (userToCredit.creditsPurchased || 0) + amount;
+            this.updateUserTier.call({ appState: userToCredit }); // Update tier based on new purchase total
             // Save the updated user data back to Firebase
             firebase.database().ref('users/' + selectedUsername).set(userToCredit);
             this.addNotification(`Admin credit: ${amount} credits have been added to ${userToCredit.name}'s account.`, 'success');
