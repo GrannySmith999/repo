@@ -127,7 +127,7 @@ function renderTasks() {
 
     appState.tasks.forEach(task => {
         const taskEl = document.createElement('div');
-        taskEl.className = 'task';
+        taskEl.className = `task status-${task.status}`; // Add status-specific class
 
         let statusBadge = '';
         let taskContent = '';
@@ -188,7 +188,7 @@ function renderMarketplaceTasks() {
         }
 
         const taskEl = document.createElement('div');
-        taskEl.className = 'task';
+        taskEl.className = 'task task-marketplace'; // Add a specific class for marketplace tasks
         taskEl.innerHTML = `
             <div class="task-info">
                 <div class="task-header">
@@ -560,7 +560,10 @@ function attachEventListeners() {
                 page.classList.toggle('active', page.id === `page-${pageId}`);
             });
 
-            if (pageId === 'history') {
+            if (pageId === 'finances') {
+                renderHistory();
+            }
+            if (pageId === 'history') { // This can be removed as it's part of finances now
                 renderHistory();
             }
             if (pageId === 'tasks') {
@@ -636,14 +639,6 @@ function attachEventListeners() {
         e.target.reset();
     });
 
-    userInfo.addEventListener('click', (e) => {
-        if (e.target.tagName === 'A' && e.target.getAttribute('href') === '#logout') {
-            e.preventDefault();
-            localStorage.removeItem('loggedInUser');
-            window.location.href = 'login.html';
-        }
-    });
-
     adminPage.addEventListener('click', (e) => {
         if (e.target.dataset.action === 'toggle-block') {
             const userEmail = e.target.dataset.userEmail;
@@ -672,6 +667,25 @@ function attachEventListeners() {
                 saveState();
                 addNotification(`${user.name}'s daily task quota has been set to ${user.dailyTaskQuota}.`, 'success');
             }
+        }
+    });
+
+    // Combined listener for header links (Logout and Profile)
+    userInfo.addEventListener('click', (e) => {
+        if (e.target.dataset.page === 'profile') {
+            e.preventDefault();
+            // Deactivate current nav button and activate profile page
+            mainNav.querySelector('.active')?.classList.remove('active');
+            pages.forEach(page => page.classList.remove('active'));
+            const profilePage = document.getElementById('page-profile');
+            if (profilePage) {
+                profilePage.classList.add('active');
+                populateAgreementForm();
+            }
+        } else if (e.target.getAttribute('href') === '#logout') {
+            e.preventDefault();
+            localStorage.removeItem('loggedInUser');
+            window.location.href = 'login.html';
         }
     });
 
