@@ -47,11 +47,8 @@ document.addEventListener('DOMContentLoaded', () => {
             role: 'user',
             tasksCompletedToday: 0,
             lastActivityDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD
-            balance: 5.00, // New users start with $5
-            tasks: [
-                { id: Date.now(), description: 'Complete your profile setup.', status: 'available' },
-                { id: Date.now() + 1, description: 'Watch the "Getting Started" tutorial video.', status: 'available' },
-            ],
+            balance: 0.00, // New users start with $0 balance
+            tasks: [], // Start with an empty task list; they can get tasks from the marketplace.
             history: []
         };
 
