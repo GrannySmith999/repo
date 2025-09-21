@@ -95,10 +95,12 @@ function loadState() {
     // Overwrite the default database if a saved one exists
     if (savedDB) {
         const loadedDatabase = JSON.parse(savedDB);
-        // Merge the loaded users with the default database structure
-        // This ensures that new properties like 'marketplaceTasks' are not lost
-        // if the saved data is from an older version.
-        database = { ...database, ...loadedDatabase };
+        // Only update the 'users' property from the loaded data.
+        // This ensures the default admin and marketplace tasks are not lost
+        // if the saved data is from an older version or doesn't contain them.
+        if (loadedDatabase.users) {
+            database.users = { ...database.users, ...loadedDatabase.users };
+        }
     }
 }
 
