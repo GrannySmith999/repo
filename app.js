@@ -1,8 +1,5 @@
 // --- Application State & Data ---
 // In a real app, this data would come from a database on a server.
-loadState(); // Load the database from localStorage FIRST.
-
-// We are simulating a database and a logged-in user state.
 let database = {
     users: {
         // The key is now the user's email
@@ -67,6 +64,8 @@ let database = {
         }
     ]
 };
+
+loadState(); // Load the database from localStorage AFTER the default database is defined.
 
 let appState = {}; // This will hold the state for the CURRENTLY LOGGED IN user.
 
