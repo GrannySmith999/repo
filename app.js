@@ -15,6 +15,8 @@ let database = {
             role: 'user',
             balance: 5.00,
             agreement: null, // Will hold agreement details
+            tasksCompletedToday: 0,
+            lastActivityDate: '2023-01-01', // Example past date
             credits: 50,
             tasks: [
                 { 
@@ -44,6 +46,8 @@ let database = {
             role: 'user',
             balance: 15.00,
             agreement: null,
+            tasksCompletedToday: 10, // Example value
+            lastActivityDate: new Date().toISOString().split('T')[0],
             credits: 25,
             tasks: [
                 { 
@@ -61,7 +65,7 @@ let database = {
             name: 'admin',
             email: 'admin@example.com',
             status: 'active',
-            role: 'admin', balance: 0, credits: 999, tasks: [], history: [], agreement: null
+            role: 'admin', balance: 0, credits: 999, tasks: [], history: [], agreement: null, tasksCompletedToday: 0, lastActivityDate: new Date().toISOString().split('T')[0]
         }
     },
 };
@@ -218,6 +222,10 @@ taskList.addEventListener('click', (e) => {
             // In a real app, the reward is given only after admin approval.
             // For this prototype, we'll give the reward immediately to show the flow.
             appState.balance += TASK_COMPLETION_REWARD; 
+            
+            // Increment daily task counter
+            checkAndResetDailyCounter();
+            appState.tasksCompletedToday++;
             updateBalanceUI(); 
             logHistory(`Task submitted for review: "${task.description}"`, TASK_COMPLETION_REWARD);
             stateChanged = true;
@@ -400,6 +408,67 @@ function populateAdminUserDropdown() {
     adminForm.insertBefore(select, creditLabel);
 }
 
+/**
+ * CONCEPTUAL FUNCTION: Generates a new task by calling an external API.
+ * This is a placeholder to show where you would integrate a service like Google Custom Search API.
+ * @param {string} taskType - The type of task to generate (e.g., 'YouTube Comment').
+ * @returns {Promise<object|null>} A new task object or null if generation fails.
+ */
+async function generateNewTaskFromAPI(taskType) {
+    // In a real implementation, you would get these from a secure place.
+    const API_KEY = 'PASTE_YOUR_NEW_API_KEY_HERE'; // IMPORTANT: Replace with your new, secure key
+    const SEARCH_ENGINE_ID = '01efd7843a7744ad0'; // Your Search Engine ID
+
+    let query = '';
+    if (taskType === 'YouTube Comment') {
+        query = 'inurl:youtube.com "travel vlog" "new york"';
+    } else if (taskType === 'Google Review') {
+        query = 'inurl:google.com/maps "coffee shop" "miami fl"';
+    } else {
+        console.error('Unsupported task type for generation');
+        return null;
+    }
+
+    try {
+        const response = await fetch(`https://www.googleapis.com/customsearch/v1?key=${API_KEY}&cx=${SEARCH_ENGINE_ID}&q=${encodeURIComponent(query)}`);
+        const data = await response.json();
+
+        if (data.items && data.items.length > 0) {
+            const firstResult = data.items[0]; // Get the first search result
+            return {
+                id: Date.now(),
+                type: taskType,
+                description: `Perform a task for: ${firstResult.title}`,
+                link: firstResult.link,
+                instructions: `Please leave a positive and relevant ${taskType.toLowerCase()}.`,
+                status: 'available'
+            };
+        }
+    } catch (error) {
+        console.error('Error fetching new task from API:', error);
+        return null;
+    }
+    return null; // Return null if no items are found or an error occurs
+}
+
+function checkAndResetDailyCounter() {
+    const today = new Date().toISOString().split('T')[0]; // Get YYYY-MM-DD
+
+    // If the last activity was yesterday or earlier
+    if (appState.lastActivityDate < today) {
+        // Check if the user met the quota for the last active day
+        if (appState.tasksCompletedToday < 20 && appState.role === 'user') {
+            appState.status = 'blocked';
+            addNotification(`Your account has been suspended for not meeting the daily task requirement of 20 tasks.`, 'error');
+        }
+
+        // Reset the counter for the new day
+        appState.tasksCompletedToday = 0;
+    }
+    // Update the last activity date to today
+    appState.lastActivityDate = today;
+}
+
 function initializeApp() {
     // Set user info
     userInfo.querySelector('span').textContent = `Welcome, ${appState.name}!`;
@@ -430,7 +499,9 @@ if (!loggedInUsername) {
     // If a user is logged in, load their data into the appState
     appState = database.users[loggedInUsername];
     // The key in the database is the email, which serves as the unique ID
+    checkAndResetDailyCounter(); // Check activity status on login
     appState.currentUser = { name: appState.name, role: appState.role };
+    saveState(); // Save any changes from the daily check
     initializeApp(); // Initialize the dashboard
 }
 
