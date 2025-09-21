@@ -3,43 +3,34 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('login-form');
     const notificationArea = document.getElementById('notification-area');
 
-    loginForm.addEventListener('submit', (e) => {
+    loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const loginIdentifier = e.target.elements.email.value.trim(); // Can be email or username
+        const email = e.target.elements.email.value.trim();
         const password = e.target.elements.password.value;
 
-        // Load existing database from localStorage
-        attemptLogin(loginIdentifier, password);
-    });
-
-    function attemptLogin(identifier, password) {
-        const database = JSON.parse(localStorage.getItem('taskAppDatabase')) || { users: {} };
-
-        let user = null;
-        let userKey = null; // The key in the database is the email
-
-        for (const key in database.users) {
-            const potentialUser = database.users[key];
-            const identifierLower = identifier.toLowerCase();
-            if ((potentialUser.email && potentialUser.email.toLowerCase() === identifierLower) || (potentialUser.name && potentialUser.name.toLowerCase() === identifierLower)) {
-                user = potentialUser;
-                userKey = key;
-                break;
-            }
+        // --- Validation ---
+        if (!email || !password) {
+            return showNotification('Please enter both email and password.', 'error');
         }
 
-        if (user && user.password === password) {
-            if (user.status === 'blocked') {
-                return showNotification('This account has been suspended. Please contact support.', 'error');
-            }
-            // "Log in" the user by saving their primary key (email)
-            localStorage.setItem('loggedInUser', userKey);
-            // Redirect to the main dashboard, removing the query parameters from the URL
+        try {
+            // Step 1: Sign in the user with Firebase Authentication
+            await firebase.auth().signInWithEmailAndPassword(email, password);
+
+            // Step 2: On successful login, redirect to the dashboard
+            // The app.js file will handle loading the user's data from this point.
             window.location.replace('index.html');
-        } else {
-            showNotification('Invalid email or password.', 'error');
+
+        } catch (error) {
+            // Handle Firebase login errors
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                showNotification('Invalid email or password.', 'error');
+            } else {
+                showNotification('An error occurred during login. Please try again.', 'error');
+                console.error("Firebase login error:", error);
+            }
         }
-    }
+    });
 
     function showNotification(message, type) {
         notificationArea.innerHTML = ''; // Clear previous notifications
