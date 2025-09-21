@@ -243,6 +243,13 @@
                         <button id="generate-tasks-btn">Generate 10 New Tasks</button>
                     </div>
 
+                    <h2 style="margin-top: 2rem;">Auto-Assign Daily Tasks</h2>
+                    <p>Assign a specific number of tasks from the marketplace to all active users who are below their daily quota.</p>
+                    <form id="auto-assign-form">
+                        <label for="auto-assign-amount">Number of Tasks to Assign</label>
+                        <input type="number" id="auto-assign-amount" name="auto-assign-amount" placeholder="e.g., 10" min="1" required>
+                        <button type="submit">Auto-Assign to All Users</button>
+                    </form>
 
                     <h2 style="margin-top: 2rem;">Credit Account</h2>
                     <p>This function is for administrators to manually add credits to user accounts.</p>
@@ -259,6 +266,28 @@
     <!-- Link to the external JavaScript file -->
     <!-- The 'defer' attribute ensures the script runs after the HTML document has been parsed. -->
     <script src="app.js" defer></script>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js" defer></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js" defer></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js" defer></script>
+
+    <!-- Initialize Firebase -->
+    <script defer>
+        // IMPORTANT: Replace this with your own Firebase project configuration!
+        const firebaseConfig = {
+            apiKey: "AIzaSyArtyLtVTenPgdI6n5FfuXVZlHVqXk56Fo",
+            authDomain: "review-master-app-6aeeb.firebaseapp.com",
+            // The databaseURL is important for the v8 SDK
+            databaseURL: "https://review-master-app-6aeeb-default-rtdb.firebaseio.com",
+            projectId: "review-master-app-6aeeb",
+            storageBucket: "review-master-app-6aeeb.appspot.com",
+            messagingSenderId: "610185397699",
+            appId: "1:610185397699:web:29ae6847033161c196e976"
+        };
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+    </script>
 </body>
 
 </html>
