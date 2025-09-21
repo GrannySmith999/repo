@@ -1,5 +1,7 @@
 // --- Application State & Data ---
 // In a real app, this data would come from a database on a server.
+loadState(); // Load the database from localStorage FIRST.
+
 // We are simulating a database and a logged-in user state.
 let database = {
     users: {
@@ -423,7 +425,6 @@ function initializeApp() {
     // Initial UI setup
     updateBalanceUI();
     renderTasks();
-    loadState(); // Load data from localStorage
     // renderHistory(); // No need to render it initially, only when page is viewed
     addNotification('Welcome to the platform! Complete tasks to earn money.', 'info');
 }
@@ -677,6 +678,7 @@ function attachEventListeners() {
 }
 
 // --- Run the App ---
+// loadState(); // Moved to the top of the file
 const loggedInUsername = localStorage.getItem('loggedInUser');
 
 if (!loggedInUsername) {
