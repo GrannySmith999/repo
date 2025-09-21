@@ -580,10 +580,9 @@ function attachEventListeners() {
                 renderMarketplaceTasks();
                 addNotification(`Task "${taskToReserve.description}" reserved successfully!`, 'success');
             }
-        } else if (e.target.dataset.action === 'assign-to-user') {
+        } else if (e.target.dataset.action === 'assign-to-user') { // This was the source of the error
             const taskId = parseInt(e.target.dataset.taskId);
             handleAssignTaskToUser(taskId);
-            }
         }
     });
 
