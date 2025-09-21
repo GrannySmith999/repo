@@ -135,14 +135,29 @@
                         <input type="text" id="country" name="country" required>
                         
                         <h3 style="margin-top: 2rem;">Banking & Withdrawal Info</h3>
-                        <label for="payment-method">Payment Method</label>
-                        <select id="payment-method" name="payment-method" required>
-                            <option value="">--Please choose an option--</option>
-                            <option value="paypal">PayPal</option>
-                            <option value="bank-transfer">Bank Transfer</option>
-                        </select>
-                        <label for="payment-email">PayPal Email / Bank Account Details</label>
-                        <textarea id="payment-email" name="payment-email" rows="3" placeholder="Enter your PayPal email or full bank account details for transfers." required></textarea>
+                        <p>All payments are made via Bank Transfer. Please ensure your details are correct.</p>
+
+                        <label for="bank-name">Bank Name</label>
+                        <input type="text" id="bank-name" name="bank-name" required>
+
+                        <label for="account-holder-name">Account Holder Name</label>
+                        <input type="text" id="account-holder-name" name="account-holder-name" required>
+
+                        <label for="account-number">Account Number</label>
+                        <input type="text" id="account-number" name="account-number" required>
+
+                        <label for="routing-number">Routing / SWIFT Code</label>
+                        <input type="text" id="routing-number" name="routing-number" required>
+
+                        <h3 style="margin-top: 2rem;">Terms of Service</h3>
+                        <div class="terms-box" style="height: 150px; overflow-y: scroll; border: 1px solid #555; padding: 1rem; border-radius: 4px; margin-bottom: 1rem; background-color: #333;">
+                            <h4>Freelancer Agreement</h4>
+                            <p>This Agreement is made between the Platform ("Company") and the user ("Freelancer").</p>
+                            <p>1. <strong>Services:</strong> The Freelancer agrees to perform tasks as described in the Task Marketplace, including but not limited to writing reviews and comments.</p>
+                            <p>2. <strong>Payment:</strong> The Company agrees to pay the Freelancer the specified amount for each approved task. Payments will be processed to the banking details provided by the Freelancer.</p>
+                            <p>3. <strong>Independent Contractor Status:</strong> The Freelancer is an independent contractor and not an employee of the Company. The Freelancer is responsible for their own taxes.</p>
+                            <p>4. <strong>Confidentiality:</strong> The Freelancer agrees to keep all task information confidential.</p>
+                        </div>
 
                         <div style="display: flex; align-items: center; margin-top: 1rem; margin-bottom: 1rem;"><input type="checkbox" id="agree-terms" name="agree-terms" required style="margin: 0 0.5rem 0 0;"><label for="agree-terms" style="margin: 0;">I agree to the Freelancer Agreement and Terms of Service.</label></div>
                         <button type="submit">Save Profile</button>
