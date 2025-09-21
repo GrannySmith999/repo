@@ -7,12 +7,10 @@ const ReviewMasterApp = {
     listenersAttached: false,
     dom: {}, // To hold DOM element references
 
-// Constants for task earnings
-const TASK_CREDIT_COST = 1;
-const TASK_COMPLETION_REWARD = 0.10;
-let currentFirebaseUser = null; // Will hold the Firebase auth user object
+    // Constants for task earnings
+    TASK_CREDIT_COST: 1,
+    TASK_COMPLETION_REWARD: 0.10,
 
-// --- State Management Functions (with Firebase) ---
 saveAppState() {
     if (this.currentFirebaseUser) {
         firebase.database().ref('users/' + this.currentFirebaseUser.uid).set(this.appState);
