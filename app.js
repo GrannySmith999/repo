@@ -634,7 +634,7 @@ start(user) {
     const userRef = firebase.database().ref('users/' + user.uid);
 
     // Fetch user's profile data
-    userRef.once('value').then((snapshot) => {
+    userRef.on('value', (snapshot) => {
         this.appState = snapshot.val();
         if (this.appState) {
             this.checkAndResetDailyCounter();
@@ -651,7 +651,7 @@ start(user) {
             }
         }
     });
-
+    
     // Fetch all users for admin panel and marketplace tasks
     firebase.database().ref('marketplaceTasks').on('value', (snapshot) => { this.marketplaceTasks = snapshot.val() || []; });
 },
