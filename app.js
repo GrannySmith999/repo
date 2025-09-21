@@ -338,7 +338,8 @@ initializeApp() {
 
 // --- Event Handlers ---
 attachEventListeners() {
-    if (this.dom.withdrawForm) this.dom.withdrawForm.addEventListener('submit', (e) => {
+    // This listener is for the withdraw form on the "Finances" page
+    this.dom.withdrawForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const amount = parseFloat(e.target.elements['withdraw-amount'].value);
 
@@ -360,7 +361,8 @@ attachEventListeners() {
         e.target.reset();
     });
 
-    this.dom.taskList.addEventListener('click', (e) => {
+    // This listener is for the main tasks page container
+    document.getElementById('page-tasks').addEventListener('click', (e) => {
         if (e.target.tagName === 'BUTTON') {
             // Find the task before making any changes
             const action = e.target.dataset.action;
@@ -408,30 +410,6 @@ attachEventListeners() {
         }
     });
 
-    this.dom.marketplaceTaskList.addEventListener('click', (e) => {
-        if (e.target.dataset.action === 'reserve') {
-            if (this.appState.credits < this.TASK_CREDIT_COST) {
-                return this.addNotification('You do not have enough credits to reserve this task.', 'error');
-            }
-
-            const taskId = parseInt(e.target.dataset.taskId);
-            const taskToReserve = this.marketplaceTasks.find(t => t.id === taskId);
-
-            if (taskToReserve) {
-                this.appState.credits -= this.TASK_CREDIT_COST;
-
-                // Add the task to the user's personal list with 'available' status
-                const newTask = { ...taskToReserve, status: 'available' };
-                this.appState.tasks.push(newTask);
-
-                this.saveAppState();
-                this.renderTasks(); // Update the user's main task list view
-                this.dom.marketplaceModal.classList.remove('active'); // Close the modal
-                this.addNotification(`Task "${taskToReserve.description}" reserved successfully!`, 'success');
-            }
-        }
-    });
-
     // --- Page Navigation ---
     this.dom.mainNav.addEventListener('click', (e) => {
         if (e.target.tagName === 'BUTTON') {
@@ -446,8 +424,11 @@ attachEventListeners() {
                 page.classList.toggle('active', page.id === `page-${pageId}`);
             });
 
-            if (pageId === 'history') {
+            if (pageId === 'finances') {
                 this.renderHistory();
+            }
+            if (pageId === 'tasks') {
+                this.renderMarketplaceTasks();
             }
             if (pageId === 'profile') {
                 this.populateAgreementForm();
@@ -463,17 +444,8 @@ attachEventListeners() {
         }
     });
 
-    // --- Marketplace Modal Handlers ---
-    this.dom.openMarketplaceBtn.addEventListener('click', () => {
-        this.renderMarketplaceTasks();
-        this.dom.marketplaceModal.classList.add('active');
-    });
-
-    this.dom.closeMarketplaceBtn.addEventListener('click', () => {
-        this.dom.marketplaceModal.classList.remove('active');
-    });
-
-    if (this.dom.agreementForm) this.dom.agreementForm.addEventListener('submit', (e) => {
+    // This listener is for the profile form
+    this.dom.profileForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const form = e.target;
 
@@ -501,7 +473,8 @@ attachEventListeners() {
         this.addNotification('Your profile and payout details have been saved successfully.', 'success');
     });
 
-    if (this.dom.adminCreditForm) this.dom.adminCreditForm.addEventListener('submit', (e) => {
+    // This listener is for the admin credit form
+    this.dom.adminCreditForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const formElements = e.target.elements;
         const selectedUsername = formElements['user-select'].value;
@@ -526,13 +499,15 @@ attachEventListeners() {
         e.target.reset();
     });
 
+    // This listener is for the header (logout and profile button)
     this.dom.userInfo.addEventListener('click', (e) => {
-        if (e.target.tagName === 'A' && e.target.getAttribute('href') === '#logout') {
+        if (e.target.getAttribute('href') === '#logout') {
             e.preventDefault();
             firebase.auth().signOut();
         }
     });
 
+    // This listener is for the admin page container
     this.dom.adminPage.addEventListener('click', (e) => {
         if (e.target.dataset.action === 'toggle-block') {
             const userUid = e.target.dataset.userUid;
@@ -587,13 +562,11 @@ cacheDom() {
     this.dom.historyList = document.getElementById('history-list');
     this.dom.mainNav = document.getElementById('main-nav');
     this.dom.adminPage = document.getElementById('page-admin');
-    this.dom.marketplaceModal = document.getElementById('marketplace-modal');
-    this.dom.openMarketplaceBtn = document.getElementById('open-marketplace-btn');
-    this.dom.closeMarketplaceBtn = document.getElementById('close-marketplace-btn');
     this.dom.marketplaceTaskList = document.getElementById('marketplace-task-list');
     this.dom.pages = document.querySelectorAll('.page');
     this.dom.withdrawForm = document.getElementById('withdraw-form');
-    this.dom.agreementForm = document.getElementById('agreement-form');
+    // The profile form is the same as the agreement form
+    this.dom.profileForm = document.getElementById('profile-form');
     this.dom.adminCreditForm = document.getElementById('admin-credit-form');
 }
 };
