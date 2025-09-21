@@ -1,11 +1,6 @@
 // --- Application State & Data ---
 // In a real app, this data would come from a database on a server.
-loadState(); // Load the database from localStorage FIRST.
-
 // We are simulating a database and a logged-in user state.
-
-let appState = {}; // This will hold the state for the CURRENTLY LOGGED IN user.
-// This simulates our multi-user database.
 let database = {
     users: {
         // The key is now the user's email
@@ -70,6 +65,9 @@ let database = {
         }
     ]
 };
+
+loadState(); // Load the database from localStorage AFTER the default database is defined.
+let appState = {}; // This will hold the state for the CURRENTLY LOGGED IN user.
 
 // --- DOM Element Selectors ---
 const userInfo = document.getElementById('user-info');
@@ -481,16 +479,6 @@ function attachEventListeners() {
         }
     });
 
-    // --- Marketplace Modal Handlers ---
-    openMarketplaceBtn.addEventListener('click', () => {
-        renderMarketplaceTasks();
-        marketplaceModal.classList.add('active');
-    });
-
-    closeMarketplaceBtn.addEventListener('click', () => {
-        marketplaceModal.classList.remove('active');
-    });
-
     marketplaceTaskList.addEventListener('click', (e) => {
         if (e.target.dataset.action === 'reserve') {
             if (appState.credits < TASK_CREDIT_COST) {
@@ -543,6 +531,16 @@ function attachEventListeners() {
                 renderUserManagementTable();
             }
         }
+    });
+
+    // --- Marketplace Modal Handlers ---
+    openMarketplaceBtn.addEventListener('click', () => {
+        renderMarketplaceTasks();
+        marketplaceModal.classList.add('active');
+    });
+
+    closeMarketplaceBtn.addEventListener('click', () => {
+        marketplaceModal.classList.remove('active');
     });
 
     document.getElementById('agreement-form').addEventListener('submit', (e) => {
