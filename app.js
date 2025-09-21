@@ -207,16 +207,18 @@ function renderHistory() {
 
 function populateAgreementForm() {
     if (appState.agreement) {
-        const form = document.getElementById('agreement-form');
-        form.elements['full-name'].value = appState.agreement.fullName ?? '';
-        form.elements['address-line1'].value = appState.agreement.addressLine1 ?? '';
-        form.elements.city.value = appState.agreement.city ?? '';
-        form.elements.country.value = appState.agreement.country ?? '';
-        form.elements['bank-name'].value = appState.agreement.bankName ?? '';
-        form.elements['account-holder-name'].value = appState.agreement.accountHolderName ?? '';
-        form.elements['account-number'].value = appState.agreement.accountNumber ?? '';
-        form.elements['routing-number'].value = appState.agreement.routingNumber ?? '';
-        form.elements['agree-terms'].checked = appState.agreement.agreedToTerms ?? false;
+        const form = document.getElementById('profile-form');
+        if (form) { // Check if the form exists before trying to populate it
+            form.elements['full-name'].value = appState.agreement.fullName ?? '';
+            form.elements['address-line1'].value = appState.agreement.addressLine1 ?? '';
+            form.elements.city.value = appState.agreement.city ?? '';
+            form.elements.country.value = appState.agreement.country ?? '';
+            form.elements['bank-name'].value = appState.agreement.bankName ?? '';
+            form.elements['account-holder-name'].value = appState.agreement.accountHolderName ?? '';
+            form.elements['account-number'].value = appState.agreement.accountNumber ?? '';
+            form.elements['routing-number'].value = appState.agreement.routingNumber ?? '';
+            form.elements['agree-terms'].checked = appState.agreement.agreedToTerms ?? false;
+        }
     }
 }
 
@@ -414,9 +416,11 @@ function initializeApp() {
 
 // --- Event Handlers ---
 function attachEventListeners() {
-    document.getElementById('withdraw-form').addEventListener('submit', (e) => {
+    // These listeners are for elements that are always present on the dashboard
+    const withdrawForm = document.getElementById('withdraw-form');
+    if (withdrawForm) withdrawForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        const amount = parseFloat(e.target.elements['withdraw-amount'].value);
+        const amount = parseFloat(e.target.elements.amount.value);
 
         if (isNaN(amount) || amount <= 0) {
             return addNotification('Please enter a valid withdrawal amount.', 'error');
@@ -424,7 +428,7 @@ function attachEventListeners() {
         if (amount > appState.balance) {
             return addNotification('Withdrawal amount cannot exceed your current balance.', 'error');
         }
-        if (!appState.agreement || !appState.agreement.paymentMethod) {
+        if (!appState.agreement || !appState.agreement.bankName) {
             return addNotification('Please complete your payment information in the Profile section before requesting a withdrawal.', 'error');
         }
 
@@ -528,7 +532,7 @@ function attachEventListeners() {
             if (pageId === 'history') {
                 renderHistory();
             }
-            if (pageId === 'profile') {
+            if (pageId === 'profile' && document.getElementById('profile-form')) {
                 populateAgreementForm();
             }
             if (pageId === 'info') {
@@ -537,6 +541,7 @@ function attachEventListeners() {
             if (pageId === 'admin') {
                 // Re-render the admin table every time the page is viewed
                 renderUserManagementTable();
+                renderPendingTasks();
             }
         }
     });
@@ -551,7 +556,8 @@ function attachEventListeners() {
         marketplaceModal.classList.remove('active');
     });
 
-    document.getElementById('agreement-form').addEventListener('submit', (e) => {
+    const profileForm = document.getElementById('profile-form');
+    if (profileForm) profileForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const form = e.target;
 
@@ -564,8 +570,6 @@ function attachEventListeners() {
             addressLine1: form.elements['address-line1'].value,
             city: form.elements.city.value,
             country: form.elements.country.value,
-            paymentMethod: form.elements['payment-method'].value,
-            paymentEmail: form.elements['payment-email'].value,
             bankName: form.elements['bank-name'].value,
             accountHolderName: form.elements['account-holder-name'].value,
             accountNumber: form.elements['account-number'].value,
@@ -581,7 +585,8 @@ function attachEventListeners() {
         addNotification('Your profile and payout details have been saved successfully.', 'success');
     });
 
-    document.getElementById('admin-credit-form').addEventListener('submit', (e) => {
+    const adminCreditForm = document.getElementById('admin-credit-form');
+    if (adminCreditForm) adminCreditForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const formElements = e.target.elements;
         const selectedUsername = formElements['user-select'].value;
