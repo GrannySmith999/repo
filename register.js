@@ -39,9 +39,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 name: username,
                 email: email,
                 status: 'active',
-                credits: 0, // New users start with 0 credits
+                credits: 50, // New users start with 50 free credits
                 agreement: null,
                 role: 'user',
+                tier: 'Basic', // New users start at the Basic tier
+                creditsPurchased: 0, // Tracks cumulative credit purchases
                 tasksCompletedToday: 0,
                 tasksAssignedToday: 0,
                 dailyTaskQuota: 5,
@@ -76,6 +78,4 @@ document.addEventListener('DOMContentLoaded', () => {
         const title = type.charAt(0).toUpperCase() + type.slice(1);
         notification.className = `notification ${type}`;
         notification.innerHTML = `<strong>${title}:</strong> ${message}`;
-        notificationArea.appendChild(notification);
-    }
-});
+   
