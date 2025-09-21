@@ -334,7 +334,7 @@ populateAdminUserDropdown() {
  */
 async generateNewTaskFromAPI(taskType) {
     // In a real implementation, you would get these from a secure place.
-    const API_KEY = 'PASTE_YOUR_NEW_API_KEY_HERE'; // IMPORTANT: Replace with your new, secure key
+    const API_KEY = 'AIzaSyAJ7BSxkmwmps1rONBc22ETODDtwI_vY2Y'; // IMPORTANT: Replace with your new, secure key
     const SEARCH_ENGINE_ID = '01efd7843a7744ad0'; // Your Search Engine ID
 
     let query = '';
@@ -757,3 +757,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
