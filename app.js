@@ -395,8 +395,6 @@ initializeApp() {
     if (this.appState.role === 'admin') {
         this.dom.userInfo.querySelector('span:first-child').textContent += ' (Admin)'; // Add admin tag to welcome message
         this.dom.mainNav.querySelector('button[data-page="admin"]').style.display = 'inline-block'; // Show the Admin button in the nav
-        this.populateAdminUserDropdown();
-        this.renderUserManagementTable();
         this.renderPendingTasks();
     }
 
@@ -648,8 +646,11 @@ start(user) {
     // Fetch all users for admin panel and marketplace tasks
     firebase.database().ref('users').on('value', (snapshot) => { 
         this.allUsers = snapshot.val() || {}; 
-        // If the current user is an admin, re-render the user table whenever user data changes.
-        if (this.appState.role === 'admin') this.renderUserManagementTable();
+        // If the current user is an admin, re-render the admin components that depend on the full user list.
+        if (this.appState && this.appState.role === 'admin') {
+            this.renderUserManagementTable();
+            this.populateAdminUserDropdown();
+        }
     });
     firebase.database().ref('marketplaceTasks').on('value', (snapshot) => { this.marketplaceTasks = snapshot.val() || []; });
 },
