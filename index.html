@@ -265,12 +265,6 @@
 
     <!-- Link to the external JavaScript file -->
     <!-- The 'defer' attribute ensures the script runs after the HTML document has been parsed. -->
-    <script src="app.js" defer></script>
-
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js" defer></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js" defer></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js" defer></script>
 
     <!-- Initialize Firebase -->
     <script defer>
@@ -288,6 +282,13 @@
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
     </script>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js" defer></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js" defer></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js" defer></script>
+
+    <script src="app.js" defer></script>
 </body>
 
 </html>
