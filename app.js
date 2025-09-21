@@ -514,7 +514,6 @@ function attachEventListeners() {
         addNotification(`Successfully requested withdrawal of $${amount.toFixed(2)}.`, 'success');
         e.target.reset();
     });
-
     document.getElementById('page-tasks').addEventListener('click', (e) => {
         if (e.target.tagName === 'BUTTON') {
             // Find the task before making any changes
