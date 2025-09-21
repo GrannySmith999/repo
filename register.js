@@ -49,28 +49,27 @@ document.addEventListener('DOMContentLoaded', () => {
             agreement: null, // No agreement submitted initially
             role: 'user',
             tasksCompletedToday: 0,
+            tasksAssignedToday: 0,
+            dailyTaskQuota: 5, // Default quota for new users
             lastActivityDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD
             balance: 0.00, // New users start with $0 balance
             tasks: [], // Start with an empty task list; they can get tasks from the marketplace.
             history: []
         };
 
+        // --- Auto-assign starter tasks for new user (if available in marketplace) ---
+        if (database.marketplaceTasks && database.marketplaceTasks.length > 0) {
+            const starterTasks = database.marketplaceTasks.slice(0, 20).map(task => ({
+                ...task,
+                id: Date.now() + Math.random(), // Ensure unique ID
+                status: 'available'
+            }));
+            database.users[email].tasks = starterTasks;
+            database.users[email].tasksAssignedToday = starterTasks.length;
+        }
+
+
         // --- Save and Redirect ---
         // Save the updated database
         localStorage.setItem('taskAppDatabase', JSON.stringify(database));
-        // "Log in" the user by saving their email
-        localStorage.setItem('loggedInUser', email);
-
-        // Redirect to the main dashboard
-        window.location.href = 'index.html';
-    });
-
-    function showNotification(message, type) {
-        notificationArea.innerHTML = ''; // Clear previous notifications
-        const notification = document.createElement('div');
-        const title = type.charAt(0).toUpperCase() + type.slice(1);
-        notification.className = `notification ${type}`;
-        notification.innerHTML = `<strong>${title}:</strong> ${message}`;
-        notificationArea.appendChild(notification);
-    }
-});
+        // "Lo
