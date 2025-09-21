@@ -730,53 +730,41 @@ attachEventListeners() {
         }
     });
 
-    // More specific listener for the user management table
-    const userManagementTable = document.getElementById('user-management-table');
-    if (userManagementTable) {
-        userManagementTable.addEventListener('click', (e) => {
-            const action = e.target.dataset.action;
-            const userUid = e.target.dataset.userUid;
-            const target = e.target;
-
-            if (!action || !userUid) return;
-
-            // Handle tier changes directly on the select element
-            if (action === 'set-tier' && target.tagName === 'SELECT') {
-                const newTier = target.value;
-                firebase.database().ref(`users/${userUid}/tier`).set(newTier);
-                this.addNotification(`User's tier updated to ${newTier}.`, 'success');
-                return; // Stop further processing for this event
-            }
-
-            if (action === 'toggle-block') {
-                const user = this.allUsers[userUid];
-                if (user) {
-                    user.status = user.status === 'active' ? 'blocked' : 'active';
-                    firebase.database().ref(`users/${userUid}/status`).set(user.status);
-                    this.addNotification(`User ${user.name} has been ${user.status}.`, 'success');
-                    // The table will re-render automatically due to the database listener
-                }
-            } else if (action === 'set-quota') {
-                const user = this.allUsers[userUid];
-                const input = userManagementTable.querySelector(`.quota-input[data-user-uid="${userUid}"]`);
-                if (user && input) {
-                    const newQuota = parseInt(input.value, 10);
-                    firebase.database().ref(`users/${userUid}/dailyTaskQuota`).set(newQuota);
-                    this.addNotification(`${user.name}'s daily task quota has been set to ${newQuota}.`, 'success');
-                }
-            }
-        });
-    }    
-    
-    // This listener is for the admin page container, handling approvals/rejections
+    // Consolidated listener for the entire admin page.
     this.dom.adminPage.addEventListener('click', (e) => {
-        const action = e.target.dataset.action;
-        if (!action) return;
+        const target = e.target;
+        const action = target.dataset.action;
+        const userUid = target.dataset.userUid;
+
+        if (!action) return; // Exit if the clicked element has no action
 
         if (action === 'approve' || action === 'reject') {
-            const userUid = e.target.dataset.userUid;
-            const taskId = parseInt(e.target.dataset.taskId);
+            const taskId = parseInt(target.dataset.taskId);
             this.handleTaskApproval(userUid, taskId, action === 'approve');
+        } else if (action === 'set-tier' && target.tagName === 'SELECT') {
+            const newTier = target.value;
+            firebase.database().ref(`users/${userUid}/tier`).set(newTier);
+            this.addNotification(`User's tier updated to ${newTier}.`, 'success');
+        } else if (action === 'toggle-block') {
+            const user = this.allUsers[userUid];
+            if (user) {
+                const newStatus = user.status === 'active' ? 'blocked' : 'active';
+                firebase.database().ref(`users/${userUid}/status`).set(newStatus);
+                this.addNotification(`User ${user.name} has been set to ${newStatus}.`, 'success');
+            }
+        } else if (action === 'set-quota') {
+            // Find the input field associated with the clicked "Set" button
+            const input = target.previousElementSibling;
+            if (input && input.classList.contains('quota-input')) {
+                const user = this.allUsers[userUid];
+                if (user) {
+                    const newQuota = parseInt(input.value, 10);
+                    if (!isNaN(newQuota)) {
+                        firebase.database().ref(`users/${userUid}/dailyTaskQuota`).set(newQuota);
+                        this.addNotification(`${user.name}'s daily task quota has been set to ${newQuota}.`, 'success');
+                    }
+                }
+            }
         }
     });
 
