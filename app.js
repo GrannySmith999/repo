@@ -476,6 +476,11 @@ attachEventListeners() {
                 this.renderTasks();
                 // Save the new state to localStorage
                 this.saveAppState();
+            } else if (action === 'assign-to-user') {
+                const taskId = parseInt(e.target.dataset.taskId, 10);
+                if (this.appState.role === 'admin') {
+                    this.handleAssignTaskToUser(taskId);
+                }
             }
         } else if (e.target.dataset.action === 'reserve') {
             if (this.appState.tasksAssignedToday >= this.appState.dailyTaskQuota) {
@@ -653,6 +658,38 @@ attachEventListeners() {
             const generatedTasks = (await Promise.all(newTasks)).filter(Boolean);
             firebase.database().ref('marketplaceTasks').set(generatedTasks);
             this.addNotification(`${generatedTasks.length} new tasks have been generated!`, 'success');
+        });
+    }
+},
+    const autoAssignForm = document.getElementById('auto-assign-form');
+    if (autoAssignForm) {
+        autoAssignForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const amountToAssign = parseInt(e.target.elements['auto-assign-amount'].value, 10);
+
+            if (isNaN(amountToAssign) || amountToAssign <= 0) {
+                return this.addNotification('Please enter a valid number of tasks to assign.', 'error');
+            }
+
+            let assignedCount = 0;
+            let userCount = 0;
+            const availableMarketplaceTasks = [...this.marketplaceTasks];
+
+            for (const uid in this.allUsers) {
+                const user = this.allUsers[uid];
+                if (user.role === 'user' && user.status === 'active') {
+                    userCount++;
+                    for (let i = 0; i < amountToAssign; i++) {
+                        if ((user.tasksAssignedToday || 0) < user.dailyTaskQuota && availableMarketplaceTasks.length > 0) {
+                            const taskToAssign = availableMarketplaceTasks.shift();
+                            const userTasksRef = firebase.database().ref(`users/${uid}/tasks`);
+                            userTasksRef.push({ ...taskToAssign, status: 'available' });
+                            assignedCount++;
+                        }
+                    }
+                }
+            }
+            this.addNotification(`Assigned a total of ${assignedCount} tasks to ${userCount} active users.`, 'success');
         });
     }
 },
