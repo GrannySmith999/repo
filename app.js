@@ -28,10 +28,11 @@ updateBalanceUI() {
 },
 
 addNotification(message, type = 'info') { // type can be 'info', 'success', 'error'
+    const toast = document.createElement('div');
     toast.className = `toast notification ${type}`;
     const title = type.charAt(0).toUpperCase() + type.slice(1);
     toast.innerHTML = `<strong>${title}:</strong> ${message}`;
-    toastContainer.appendChild(toast);
+    this.dom.toastContainer.appendChild(toast);
     setTimeout(() => {
         toast.classList.add('show');
     }, 100);
@@ -600,37 +601,34 @@ attachEventListeners() {
         }
     });
 
-    // This listener is for the admin page container
-    this.dom.adminPage.addEventListener('click', (e) => {
-        if (e.target.dataset.action === 'toggle-block') {
+    // More specific listener for the user management table
+    const userManagementTable = document.getElementById('user-management-table');
+    if (userManagementTable) {
+        userManagementTable.addEventListener('click', (e) => {
+            const action = e.target.dataset.action;
             const userUid = e.target.dataset.userUid;
-            const user = this.allUsers[userUid];
-            if (user) {
-                // Toggle the user's status
-                user.status = user.status === 'active' ? 'blocked' : 'active';
-                firebase.database().ref('users/' + userUid).child('status').set(user.status);
-                this.renderUserManagementTable(); // Re-render the table to show the change
-                this.addNotification(`User ${user.name} has been ${user.status}.`, 'success');
+
+            if (!action || !userUid) return;
+
+            if (action === 'toggle-block') {
+                const user = this.allUsers[userUid];
+                if (user) {
+                    user.status = user.status === 'active' ? 'blocked' : 'active';
+                    firebase.database().ref(`users/${userUid}/status`).set(user.status);
+                    this.addNotification(`User ${user.name} has been ${user.status}.`, 'success');
+                    // The table will re-render automatically due to the database listener
+                }
+            } else if (action === 'set-quota') {
+                const user = this.allUsers[userUid];
+                const input = userManagementTable.querySelector(`.quota-input[data-user-uid="${userUid}"]`);
+                if (user && input) {
+                    const newQuota = parseInt(input.value, 10);
+                    firebase.database().ref(`users/${userUid}/dailyTaskQuota`).set(newQuota);
+                    this.addNotification(`${user.name}'s daily task quota has been set to ${newQuota}.`, 'success');
+                }
             }
-        } else if (e.target.dataset.action === 'approve') {
-            const userUid = e.target.dataset.userUid;
-            const taskId = parseInt(e.target.dataset.taskId);
-            this.handleTaskApproval(userUid, taskId, true);
-        } else if (e.target.dataset.action === 'reject') {
-            const userUid = e.target.dataset.userUid;
-            const taskId = parseInt(e.target.dataset.taskId);
-            this.handleTaskApproval(userUid, taskId, false);
-        } else if (e.target.dataset.action === 'set-quota') {
-            const userUid = e.target.dataset.userUid;
-            const user = this.allUsers[userUid];
-            const input = this.dom.adminPage.querySelector(`.quota-input[data-user-uid="${userUid}"]`);
-            if (user && input) {
-                user.dailyTaskQuota = parseInt(input.value, 10);
-                firebase.database().ref(`users/${userUid}/dailyTaskQuota`).set(user.dailyTaskQuota);
-                this.addNotification(`${user.name}'s daily task quota has been set to ${user.dailyTaskQuota}.`, 'success');
-            }
-        }
-    });
+        });
+    }
 },
 
 start(user) {
@@ -648,7 +646,11 @@ start(user) {
     });
 
     // Fetch all users for admin panel and marketplace tasks
-    firebase.database().ref('users').on('value', (snapshot) => { this.allUsers = snapshot.val() || {}; });
+    firebase.database().ref('users').on('value', (snapshot) => { 
+        this.allUsers = snapshot.val() || {}; 
+        // If the current user is an admin, re-render the user table whenever user data changes.
+        if (this.appState.role === 'admin') this.renderUserManagementTable();
+    });
     firebase.database().ref('marketplaceTasks').on('value', (snapshot) => { this.marketplaceTasks = snapshot.val() || []; });
 },
 
