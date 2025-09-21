@@ -1,5 +1,7 @@
 // --- Application State & Data ---
 // In a real app, this data would come from a database on a server.
+loadState(); // Load the database from localStorage FIRST.
+
 // We are simulating a database and a logged-in user state.
 
 let appState = {}; // This will hold the state for the CURRENTLY LOGGED IN user.
@@ -489,7 +491,6 @@ function initializeApp() {
 }
 
 // --- Run the App ---
-loadState(); // Load the entire database from localStorage
 const loggedInUsername = localStorage.getItem('loggedInUser');
 
 if (!loggedInUsername) {
