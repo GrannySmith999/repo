@@ -567,6 +567,15 @@ attachEventListeners() {
             }
 
             const task = this.appState.tasks ? this.appState.tasks.find(t => t.id === taskId) : null;
+
+            // If the task is not in the user's list, it might be a marketplace action (like admin assign)
+            if (!task) {
+                if (action === 'assign-to-user' && this.appState.role === 'admin') {
+                    this.handleAssignTaskToUser(taskId);
+                }
+                return; // Stop if no user task is found and it's not a known marketplace action
+            }
+
             if (task && action === 'start') {
                 const creditCost = this.getCurrentTierInfo().creditCost;
                 if (this.appState.credits < creditCost) {
@@ -601,12 +610,7 @@ attachEventListeners() {
                 // Re-render tasks to reflect the new status
                 this.renderTasks();
                 // Save the new state to localStorage
-                this.saveAppState();
-            }
-            if (action === 'assign-to-user') {
-                if (this.appState.role === 'admin') {
-                    this.handleAssignTaskToUser(taskId);
-                }
+                this.saveAppState(); 
             }
         }
     });
