@@ -634,21 +634,17 @@ start(user) {
     const userRef = firebase.database().ref('users/' + user.uid);
 
     // Fetch user's profile data
-    userRef.once('value').then((snapshot) => {
+    userRef.on('value', (snapshot) => {
         this.appState = snapshot.val();
         if (this.appState) {
             this.checkAndResetDailyCounter();
             this.initializeApp();
-
-            // If the user is an admin, fetch all user data and render admin components
-            if (this.appState.role === 'admin') {
-                firebase.database().ref('users').on('value', (snapshot) => {
-                    this.allUsers = snapshot.val() || {};
-                    this.renderUserManagementTable();
-                    this.populateAdminUserDropdown();
-                });
-            }
         }
+    });
+
+    // Set up a listener for all users, which will be used by the admin panel
+    firebase.database().ref('users').on('value', (snapshot) => {
+        this.allUsers = snapshot.val() || {};
     });
     firebase.database().ref('marketplaceTasks').on('value', (snapshot) => { this.marketplaceTasks = snapshot.val() || []; });
 },
