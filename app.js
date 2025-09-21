@@ -19,25 +19,8 @@ let database = {
             agreement: null, // Will hold agreement details
             tasksCompletedToday: 0,
             lastActivityDate: '2023-01-01', // Example past date
-            credits: 50,
-            tasks: [
-                { 
-                    id: 1, 
-                    type: 'YouTube Comment',
-                    description: 'Leave a positive comment on a travel vlog.', 
-                    link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', // Example link
-                    instructions: 'Watch the video and leave a comment about your favorite part. Keep it positive and engaging.',
-                    status: 'available' // available, started, pending, completed
-                },
-                { 
-                    id: 2, 
-                    type: 'Google Review',
-                    description: 'Write a 5-star review for a local cafe.',
-                    link: 'https://www.google.com/maps/search/?api=1&query=cafe+near+me', // Example link
-                    instructions: 'Mention the friendly staff and the quality of the coffee in your review.',
-                    status: 'available' 
-                }
-            ],
+            credits: 50, 
+            tasks: [], // User's personal reserved tasks
             history: []
         },
         "johnsmith@example.com": {
@@ -50,16 +33,8 @@ let database = {
             agreement: null,
             tasksCompletedToday: 10, // Example value
             lastActivityDate: new Date().toISOString().split('T')[0],
-            credits: 25,
-            tasks: [
-                { 
-                    id: 3, 
-                    type: 'Facebook Comment',
-                    description: 'Post a supportive comment on a new product launch.',
-                    link: 'https://www.facebook.com/', // Example link
-                    instructions: 'Comment on the post, mentioning how excited you are for the new product.',
-                    status: 'available' },
-            ],
+            credits: 25, 
+            tasks: [],
             history: []
         },
         "admin@example.com": {
@@ -70,6 +45,30 @@ let database = {
             role: 'admin', balance: 0, credits: 999, tasks: [], history: [], agreement: null, tasksCompletedToday: 0, lastActivityDate: new Date().toISOString().split('T')[0]
         }
     },
+    // Global pool of tasks available in the marketplace
+    marketplaceTasks: [
+        { 
+            id: 101, 
+            type: 'YouTube Comment',
+            description: 'Leave a positive comment on a travel vlog.', 
+            link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            instructions: 'Watch the video and leave a comment about your favorite part. Keep it positive and engaging.'
+        },
+        { 
+            id: 102, 
+            type: 'Google Review',
+            description: 'Write a 5-star review for a local cafe.',
+            link: 'https://www.google.com/maps/search/?api=1&query=cafe+near+me',
+            instructions: 'Mention the friendly staff and the quality of the coffee in your review.'
+        },
+        { 
+            id: 103, 
+            type: 'Facebook Comment',
+            description: 'Post a supportive comment on a new product launch.',
+            link: 'https://www.facebook.com/',
+            instructions: 'Comment on the post, mentioning how excited you are for the new product.'
+        }
+    ]
 };
 
 // --- DOM Element Selectors ---
@@ -80,6 +79,10 @@ const taskList = document.getElementById('task-list');
 const historyList = document.getElementById('history-list');
 const mainNav = document.getElementById('main-nav');
 const adminPage = document.getElementById('page-admin');
+const marketplaceModal = document.getElementById('marketplace-modal');
+const openMarketplaceBtn = document.getElementById('open-marketplace-btn');
+const closeMarketplaceBtn = document.getElementById('close-marketplace-btn');
+const marketplaceTaskList = document.getElementById('marketplace-task-list');
 const pages = document.querySelectorAll('.page');
 
 // Constants for task earnings
@@ -121,6 +124,11 @@ function addNotification(message, type = 'info') { // type can be 'info', 'succe
 
 function renderTasks() {
     taskList.innerHTML = ''; // Clear existing tasks
+    if (appState.tasks.length === 0) {
+        taskList.innerHTML = '<p>You have no active tasks. Find new tasks in the marketplace!</p>';
+        return;
+    }
+
     appState.tasks.forEach(task => {
         if (task.status === 'completed') return; // Don't render completed tasks
 
@@ -155,6 +163,33 @@ function renderTasks() {
 
         taskList.appendChild(taskEl);
     });
+}
+
+function renderMarketplaceTasks() {
+    marketplaceTaskList.innerHTML = '';
+    const userTaskIds = appState.tasks.map(t => t.id);
+
+    database.marketplaceTasks.forEach(task => {
+        // Don't show tasks the user has already reserved
+        if (userTaskIds.includes(task.id)) {
+            return;
+        }
+
+        const taskEl = document.createElement('div');
+        taskEl.className = 'task';
+        taskEl.innerHTML = `
+            <div class="task-info">
+                <strong>${task.type}:</strong> ${task.description}<br>
+                <em>Instructions: ${task.instructions}</em>
+            </div>
+            <button data-task-id="${task.id}" data-action="reserve">Reserve Task (1 Credit)</button>
+        `;
+        marketplaceTaskList.appendChild(taskEl);
+    });
+
+    if (marketplaceTaskList.innerHTML === '') {
+        marketplaceTaskList.innerHTML = '<p>No new tasks are available in the marketplace right now. Please check back later.</p>';
+    }
 }
 
 function renderHistory() {
@@ -239,6 +274,40 @@ taskList.addEventListener('click', (e) => {
             renderTasks();
             // Save the new state to localStorage
             saveState();
+        }
+    }
+});
+
+// --- Marketplace Modal Handlers ---
+openMarketplaceBtn.addEventListener('click', () => {
+    renderMarketplaceTasks();
+    marketplaceModal.classList.add('active');
+});
+
+closeMarketplaceBtn.addEventListener('click', () => {
+    marketplaceModal.classList.remove('active');
+});
+
+marketplaceTaskList.addEventListener('click', (e) => {
+    if (e.target.dataset.action === 'reserve') {
+        if (appState.credits < TASK_CREDIT_COST) {
+            return addNotification('You do not have enough credits to reserve this task.', 'error');
+        }
+
+        const taskId = parseInt(e.target.dataset.taskId);
+        const taskToReserve = database.marketplaceTasks.find(t => t.id === taskId);
+
+        if (taskToReserve) {
+            appState.credits -= TASK_CREDIT_COST;
+            
+            // Add the task to the user's personal list with 'available' status
+            const newTask = { ...taskToReserve, status: 'available' };
+            appState.tasks.push(newTask);
+
+            saveState();
+            renderTasks(); // Update the user's main task list view
+            marketplaceModal.classList.remove('active'); // Close the modal
+            addNotification(`Task "${taskToReserve.description}" reserved successfully!`, 'success');
         }
     }
 });
