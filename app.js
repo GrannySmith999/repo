@@ -414,7 +414,8 @@ function initializeApp() {
 
 // --- Event Handlers ---
 function attachEventListeners() {
-    document.getElementById('withdraw-form').addEventListener('submit', (e) => {
+    const withdrawForm = document.getElementById('withdraw-form');
+    if (withdrawForm) withdrawForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const amount = parseFloat(e.target.elements['withdraw-amount'].value);
 
@@ -424,7 +425,7 @@ function attachEventListeners() {
         if (amount > appState.balance) {
             return addNotification('Withdrawal amount cannot exceed your current balance.', 'error');
         }
-        if (!appState.agreement || !appState.agreement.paymentMethod) {
+        if (!appState.agreement || !appState.agreement.bankName) {
             return addNotification('Please complete your payment information in the Profile section before requesting a withdrawal.', 'error');
         }
 
@@ -552,7 +553,8 @@ function attachEventListeners() {
         marketplaceModal.classList.remove('active');
     });
 
-    document.getElementById('agreement-form').addEventListener('submit', (e) => {
+    const agreementForm = document.getElementById('agreement-form');
+    if (agreementForm) agreementForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const form = e.target;
 
@@ -565,8 +567,6 @@ function attachEventListeners() {
             addressLine1: form.elements['address-line1'].value,
             city: form.elements.city.value,
             country: form.elements.country.value,
-            paymentMethod: form.elements['payment-method'].value,
-            paymentEmail: form.elements['payment-email'].value,
             bankName: form.elements['bank-name'].value,
             accountHolderName: form.elements['account-holder-name'].value,
             accountNumber: form.elements['account-number'].value,
@@ -582,11 +582,12 @@ function attachEventListeners() {
         addNotification('Your profile and payout details have been saved successfully.', 'success');
     });
 
-    document.getElementById('admin-credit-form').addEventListener('submit', (e) => {
+    const adminCreditForm = document.getElementById('admin-credit-form');
+    if (adminCreditForm) adminCreditForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const formElements = e.target.elements;
         const selectedUsername = formElements['user-select'].value;
-        const amount = parseFloat(e.target.elements['credit-amount'].value);
+        const amount = parseInt(e.target.elements['credit-amount'].value, 10);
 
         if (!selectedUsername) {
             return addNotification('Please select a user to credit.', 'error');
@@ -598,9 +599,9 @@ function attachEventListeners() {
         // Find the user in the database and update their balance
         const userToCredit = database.users[selectedUsername];
         if (userToCredit) {
-            userToCredit.balance += amount;
-            logHistory(`Admin credit for ${selectedUsername}`, amount); // This logs to the admin's history
-            addNotification(`Admin credit: $${amount.toFixed(2)} has been added to ${selectedUsername}'s account.`, 'success');
+            userToCredit.credits += amount;
+            logHistory(`Admin credit for ${selectedUsername}`, 0); // No monetary change
+            addNotification(`Admin credit: ${amount} credits have been added to ${selectedUsername}'s account.`, 'success');
         }
 
         saveState(); // Save state after admin credit
