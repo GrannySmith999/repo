@@ -45,6 +45,8 @@ document.addEventListener('DOMContentLoaded', () => {
             credits: 50, // New users start with 50 credits
             agreement: null, // No agreement submitted initially
             role: 'user',
+            tasksCompletedToday: 0,
+            lastActivityDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD
             balance: 5.00, // New users start with $5
             tasks: [
                 { id: Date.now(), description: 'Complete your profile setup.', status: 'available' },
