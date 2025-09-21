@@ -141,9 +141,6 @@ renderMarketplaceTasks() {
     const userTaskIds = this.appState.tasks ? this.appState.tasks.map(t => t.id) : [];
 
     if (!this.marketplaceTasks || this.marketplaceTasks.length === 0) {
-        const message = this.appState.credits === 0 && (!this.appState.tasks || this.appState.tasks.length === 0)
-            ? '<p>You have no credits. Please contact your supervisor to get credits and start working.</p>'
-            : '<p>No new tasks are available right now. The admin can generate more.</p>';
         const message = '<p>No new tasks are available in the marketplace right now. Please check back later.</p>';
         this.dom.marketplaceTaskList.innerHTML = message;
         return;
@@ -766,13 +763,8 @@ attachEventListeners() {
                     }
                 }
             }
-        }
-    });
-
-    // Listener for the task generation button
-    const generateTasksBtn = document.getElementById('generate-tasks-btn');
-    if (generateTasksBtn) {
-        generateTasksBtn.addEventListener('click', async () => {
+        } else if (target.id === 'generate-tasks-btn') {
+            // This handles the click on the generate tasks button
             const numToGenerate = parseInt(document.getElementById('generate-tasks-amount').value, 10);
 
             if (isNaN(numToGenerate) || numToGenerate < 1 || numToGenerate > 100) {
@@ -781,7 +773,6 @@ attachEventListeners() {
 
             this.addNotification('Generating new tasks... Please wait.', 'info');
             const newTasks = [];
-            // Generate half YouTube, half Google Review
             for (let i = 0; i < Math.ceil(numToGenerate / 2); i++) {
                 newTasks.push(this.generateNewTaskFromAPI('YouTube Comment'));
             }
@@ -789,12 +780,14 @@ attachEventListeners() {
                 newTasks.push(this.generateNewTaskFromAPI('Google Review'));
             }
 
-            const generatedTasks = (await Promise.all(newTasks)).filter(Boolean);
-            const updatedMarketplace = [...this.marketplaceTasks, ...generatedTasks];
-            firebase.database().ref('marketplaceTasks').set(updatedMarketplace);
-            this.addNotification(`${generatedTasks.length} new tasks have been generated!`, 'success');
-        });
-    }
+            Promise.all(newTasks).then(generatedTasks => {
+                const filteredTasks = generatedTasks.filter(Boolean);
+                const updatedMarketplace = [...this.marketplaceTasks, ...filteredTasks];
+                firebase.database().ref('marketplaceTasks').set(updatedMarketplace);
+                this.addNotification(`${filteredTasks.length} new tasks have been generated!`, 'success');
+            });
+        }
+    });
 
     const autoAssignForm = document.getElementById('auto-assign-form');
     if (autoAssignForm) {
