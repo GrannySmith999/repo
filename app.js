@@ -628,6 +628,34 @@ attachEventListeners() {
         });
     }
 },
+    
+    // This listener is for the admin page container
+    this.dom.adminPage.addEventListener('click', (e) => {
+        const action = e.target.dataset.action;
+        if (!action) return;
+
+        if (action === 'approve' || action === 'reject') {
+            const userUid = e.target.dataset.userUid;
+            const taskId = parseInt(e.target.dataset.taskId);
+            this.handleTaskApproval(userUid, taskId, action === 'approve');
+        }
+    });
+
+    const generateTasksBtn = document.getElementById('generate-tasks-btn');
+    if (generateTasksBtn) {
+        generateTasksBtn.addEventListener('click', async () => {
+            this.addNotification('Generating new tasks... Please wait.', 'info');
+            const newTasks = [];
+            for (let i = 0; i < 5; i++) {
+                newTasks.push(this.generateNewTaskFromAPI('YouTube Comment'));
+                newTasks.push(this.generateNewTaskFromAPI('Google Review'));
+            }
+            const generatedTasks = (await Promise.all(newTasks)).filter(Boolean);
+            firebase.database().ref('marketplaceTasks').set(generatedTasks);
+            this.addNotification(`${generatedTasks.length} new tasks have been generated!`, 'success');
+        });
+    }
+},
 
 start(user) {
     this.currentFirebaseUser = user;
