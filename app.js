@@ -575,38 +575,38 @@ function attachEventListeners() {
 }
 
 // --- Run the App ---
-function startApp(user) {
-    // User is signed in.
-    currentFirebaseUser = user;
-    const userRef = firebase.database().ref('users/' + user.uid);
-    
-    // Fetch user's profile data
-    userRef.on('value', (snapshot) => {
-        appState = snapshot.val();
-        if (appState) {
-            checkAndResetDailyCounter();
-            attachEventListeners();
-            initializeApp();
+document.addEventListener('DOMContentLoaded', () => {
+    // This flag ensures event listeners are only attached once.
+    let listenersAttached = false;
+
+    firebase.auth().onAuthStateChanged(user => {
+        if (user) {
+            // User is signed in.
+            currentFirebaseUser = user;
+            const userRef = firebase.database().ref('users/' + user.uid);
+
+            // Fetch user's profile data
+            userRef.on('value', (snapshot) => {
+                appState = snapshot.val();
+                if (appState) {
+                    if (!listenersAttached) {
+                        attachEventListeners();
+                        listenersAttached = true;
+                    }
+                    checkAndResetDailyCounter();
+                    initializeApp();
+                }
+            });
+
+            // Fetch all users for admin panel and marketplace tasks
+            firebase.database().ref('users').on('value', (snapshot) => { allUsers = snapshot.val() || {}; });
+            firebase.database().ref('marketplaceTasks').on('value', (snapshot) => { marketplaceTasks = snapshot.val() || []; });
+
+        } else {
+            // User is signed out.
+            window.location.replace('login.html');
         }
     });
-
-    // Fetch all users for admin panel and marketplace tasks
-    firebase.database().ref('users').on('value', (snapshot) => { allUsers = snapshot.val() || {}; });
-    firebase.database().ref('marketplaceTasks').on('value', (snapshot) => { marketplaceTasks = snapshot.val() || []; });
-}
-
-firebase.auth().onAuthStateChanged(user => {
-    if (user) {
-        // If the DOM is already loaded, start the app. Otherwise, wait for it.
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => startApp(user));
-        } else {
-            startApp(user);
-        }
-    } else {
-        // User is signed out.
-        window.location.replace('login.html');
-    }
 });
 
 // To reset the state for testing, you can open the browser console and run:
