@@ -544,12 +544,30 @@ attachEventListeners() {
             const action = button.dataset.action;
             const taskId = parseInt(button.dataset.taskId);
             let stateChanged = false;
-            
-            let task = action === 'reserve' ? null : (this.appState.tasks ? this.appState.tasks.find(t => t.id === taskId) : null);
 
-            if (!task) return;
+            if (action === 'reserve') {
+                if (this.appState.tasksAssignedToday >= this.appState.dailyTaskQuota) {
+                    return this.addNotification(`You have reached your daily limit of ${this.appState.dailyTaskQuota} assigned tasks.`, 'error');
+                }
+                const creditCost = this.getCurrentTierInfo().creditCost;
+                if (this.appState.credits < creditCost) {
+                    return this.addNotification('You do not have enough credits to reserve this task.', 'error');
+                }
+                const taskToReserve = this.marketplaceTasks.find(t => t.id === taskId);
+                if (taskToReserve) {
+                    this.appState.credits -= creditCost;
+                    this.appState.tasksAssignedToday = (this.appState.tasksAssignedToday || 0) + 1;
+                    const newTask = { ...taskToReserve, status: 'available' };
+                    if (!this.appState.tasks) this.appState.tasks = [];
+                    this.appState.tasks.push(newTask);
+                    this.saveAppState();
+                    this.addNotification(`Task "${taskToReserve.description}" reserved successfully!`, 'success');
+                }
+                return; // End here for reserve action
+            }
 
-            if (action === 'start') {
+            const task = this.appState.tasks ? this.appState.tasks.find(t => t.id === taskId) : null;
+            if (task && action === 'start') {
                 const creditCost = this.getCurrentTierInfo().creditCost;
                 if (this.appState.credits < creditCost) {
                     return this.addNotification('You do not have enough credits to start this task.', 'error');
@@ -560,7 +578,7 @@ attachEventListeners() {
                 this.logHistory(`Used ${creditCost} credit for task: "${task.description}"`, 0); // Logging credit use, no monetary change
                 stateChanged = true;
                 this.addNotification(`Task started! ${creditCost} credit has been used.`, 'info');
-            } else if (action === 'finish') {
+            } else if (task && action === 'finish') {
                 const submissionText = document.querySelector(`textarea[data-task-id="${taskId}"]`).value;
                 if (!submissionText || submissionText.trim().length < 10) {
                     return this.addNotification('Please provide valid proof of completion (e.g., a link or description).', 'error');
@@ -589,29 +607,6 @@ attachEventListeners() {
                 if (this.appState.role === 'admin') {
                     this.handleAssignTaskToUser(taskId);
                 }
-            }
-        } else if (e.target.closest('button')?.dataset.action === 'reserve') {
-            if (this.appState.tasksAssignedToday >= this.appState.dailyTaskQuota) {
-                return this.addNotification(`You have reached your daily limit of ${this.appState.dailyTaskQuota} assigned tasks.`, 'error');
-            }
-            const creditCost = this.getCurrentTierInfo().creditCost;
-            if (this.appState.credits < creditCost) {
-                return this.addNotification('You do not have enough credits to reserve this task.', 'error');
-            }
-
-            const taskId = parseInt(e.target.closest('button').dataset.taskId);
-            const taskToReserve = this.marketplaceTasks.find(t => t.id === taskId);
-
-            if (taskToReserve) {
-                this.appState.credits -= creditCost;
-                this.appState.tasksAssignedToday = (this.appState.tasksAssignedToday || 0) + 1;
-
-                const newTask = { ...taskToReserve, status: 'available' };
-                if (!this.appState.tasks) this.appState.tasks = [];
-                this.appState.tasks.push(newTask);
-
-                this.saveAppState();
-                this.addNotification(`Task "${taskToReserve.description}" reserved successfully!`, 'success');
             }
         }
     });
