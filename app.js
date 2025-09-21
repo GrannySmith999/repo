@@ -225,6 +225,8 @@ renderUserManagementTable() {
                     <th>Username</th>
                     <th>Email</th>
                     <th>Daily Quota</th>
+                    <th>Tier</th>
+                    <th>Tasks Completed</th>
                     <th>Balance</th>
                     <th>Status</th>
                     <th>Action</th>
@@ -236,7 +238,29 @@ renderUserManagementTable() {
         const user = this.allUsers[uid];
         if (user.role === 'admin') continue; // Don't show admin in the list
         const statusClass = user.status === 'blocked' ? 'status-blocked' : '';
-        const buttonText = user.status === 'active' ? 'Block' : 'Unblock';
+        const blockButtonText = user.status === 'active' ? 'Block' : 'Unblock';
+
+        // Calculate completed tasks and tier breakdown
+        let completedTasksCount = 0;
+        const tierCounts = { Basic: 0, Gold: 0, Platinum: 0, Diamond: 0 };
+        if (user.tasks && Array.isArray(user.tasks)) {
+            user.tasks.forEach(task => {
+                if (task.status === 'completed') {
+                    completedTasksCount++;
+                    if (tierCounts.hasOwnProperty(task.tier)) {
+                        tierCounts[task.tier]++;
+                    }
+                }
+            });
+        }
+
+        // Create the tier selection dropdown
+        let tierOptions = '';
+        for (const tierName in this.tiers) {
+            const selected = user.tier === tierName ? 'selected' : '';
+            tierOptions += `<option value="${tierName}" ${selected}>${tierName}</option>`;
+        }
+
         tableHTML += `
             <tr>
                 <td>${user.name}</td>
@@ -245,9 +269,15 @@ renderUserManagementTable() {
                     <input type="number" value="${user.dailyTaskQuota || 5}" min="5" max="100" style="width: 60px; padding: 0.2rem;" data-user-uid="${uid}" class="quota-input">
                     <button data-action="set-quota" data-user-uid="${uid}">Set</button>
                 </td>
+                <td>
+                    <select data-action="set-tier" data-user-uid="${uid}" class="tier-select">${tierOptions}</select>
+                </td>
+                <td>
+                    ${completedTasksCount} Total <small>(B:${tierCounts.Basic}, G:${tierCounts.Gold}, P:${tierCounts.Platinum}, D:${tierCounts.Diamond})</small>
+                </td>
                 <td>$${user.balance.toFixed(2)}</td>
                 <td class="${statusClass}">${user.status.charAt(0).toUpperCase() + user.status.slice(1)}</td>
-                <td><button data-action="toggle-block" data-user-uid="${uid}">${buttonText}</button></td>
+                <td><button data-action="toggle-block" data-user-uid="${uid}">${blockButtonText}</button></td>
             </tr>
         `;
     }
@@ -368,7 +398,7 @@ async generateNewTaskFromAPI(taskType) {
     let query = '';
     let tier = 'Basic'; // Default tier
 
-    // Assign a tier to the generated task randomly for variety
+    // Assign a tier to the generated task randomly for variety.
     const rand = Math.random();
     if (rand > 0.9) tier = 'Diamond';
     else if (rand > 0.7) tier = 'Platinum';
@@ -389,7 +419,7 @@ async generateNewTaskFromAPI(taskType) {
 
         if (data.items && data.items.length > 0) {
             const firstResult = data.items[0]; // Get the first search result
-            return {
+            const newTask = {
                 id: Date.now(),
                 type: taskType,
                 description: `Perform a task for: ${firstResult.title}`,
@@ -398,6 +428,7 @@ async generateNewTaskFromAPI(taskType) {
                 tier: tier,
                 status: 'available'
             };
+            return newTask;
         }
     } catch (error) {
         console.error('Error fetching new task from API:', error);
@@ -652,8 +683,17 @@ attachEventListeners() {
         userManagementTable.addEventListener('click', (e) => {
             const action = e.target.dataset.action;
             const userUid = e.target.dataset.userUid;
+            const target = e.target;
 
             if (!action || !userUid) return;
+
+            // Handle tier changes directly on the select element
+            if (action === 'set-tier' && target.tagName === 'SELECT') {
+                const newTier = target.value;
+                firebase.database().ref(`users/${userUid}/tier`).set(newTier);
+                this.addNotification(`User's tier updated to ${newTier}.`, 'success');
+                return; // Stop further processing for this event
+            }
 
             if (action === 'toggle-block') {
                 const user = this.allUsers[userUid];
@@ -691,14 +731,25 @@ attachEventListeners() {
     const generateTasksBtn = document.getElementById('generate-tasks-btn');
     if (generateTasksBtn) {
         generateTasksBtn.addEventListener('click', async () => {
+            const numToGenerate = parseInt(document.getElementById('generate-tasks-amount').value, 10);
+
+            if (isNaN(numToGenerate) || numToGenerate <= 0 || numToGenerate > 100) {
+                return this.addNotification('Please enter a number between 1 and 100.', 'error');
+            }
+
             this.addNotification('Generating new tasks... Please wait.', 'info');
             const newTasks = [];
-            for (let i = 0; i < 5; i++) {
+            // Generate half YouTube, half Google Review
+            for (let i = 0; i < Math.ceil(numToGenerate / 2); i++) {
                 newTasks.push(this.generateNewTaskFromAPI('YouTube Comment'));
+            }
+            for (let i = 0; i < Math.floor(numToGenerate / 2); i++) {
                 newTasks.push(this.generateNewTaskFromAPI('Google Review'));
             }
+
             const generatedTasks = (await Promise.all(newTasks)).filter(Boolean);
-            firebase.database().ref('marketplaceTasks').set(generatedTasks);
+            const updatedMarketplace = [...this.marketplaceTasks, ...generatedTasks];
+            firebase.database().ref('marketplaceTasks').set(updatedMarketplace);
             this.addNotification(`${generatedTasks.length} new tasks have been generated!`, 'success');
         });
     }
