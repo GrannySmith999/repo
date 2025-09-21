@@ -1,78 +1,13 @@
 // --- Application State & Data ---
-// In a real app, this data would come from a database on a server.
-// We are simulating a database and a logged-in user state.
-let database = {
-    users: {
-        // The key is now the user's email
-        "janedoe@example.com": {
-            password: 'password123',
-            name: 'JaneDoe',
-            status: 'active', // 'active' or 'blocked'
-            email: 'janedoe@example.com',
-            role: 'user',
-            balance: 5.00,
-            agreement: null, // Will hold agreement details
-            tasksCompletedToday: 0,
-            lastActivityDate: '2023-01-01', // Example past date
-            credits: 50, 
-            tasks: [], // User's personal reserved tasks
-            history: []
-        },
-        "johnsmith@example.com": {
-            password: 'password123',
-            name: 'JohnSmith',
-            status: 'active',
-            email: 'johnsmith@example.com',
-            role: 'user',
-            balance: 15.00,
-            agreement: null,
-            tasksCompletedToday: 10, // Example value
-            lastActivityDate: new Date().toISOString().split('T')[0],
-            credits: 25, 
-            tasks: [],
-            history: []
-        },
-        "admin@example.com": {
-            password: 'admin',
-            name: 'admin',
-            email: 'admin@example.com',
-            status: 'active',
-            role: 'admin', balance: 0, credits: 999, tasks: [], history: [], agreement: null, tasksCompletedToday: 0, lastActivityDate: new Date().toISOString().split('T')[0]
-        }
-    },
-    // Global pool of tasks available in the marketplace
-    marketplaceTasks: [
-        { 
-            id: 101, 
-            type: 'YouTube Comment',
-            description: 'Leave a positive comment on a travel vlog.', 
-            link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-            instructions: 'Watch the video and leave a comment about your favorite part. Keep it positive and engaging.'
-        },
-        { 
-            id: 102, 
-            type: 'Google Review',
-            description: 'Write a 5-star review for a local cafe.',
-            link: 'https://www.google.com/maps/search/?api=1&query=cafe+near+me',
-            instructions: 'Mention the friendly staff and the quality of the coffee in your review.'
-        },
-        { 
-            id: 103, 
-            type: 'Facebook Comment',
-            description: 'Post a supportive comment on a new product launch.',
-            link: 'https://www.facebook.com/',
-            instructions: 'Comment on the post, mentioning how excited you are for the new product.'
-        }
-    ]
-};
-
-loadState(); // Load the database from localStorage AFTER the default database is defined.
+// The appState will now hold all necessary data fetched from Firebase
 let appState = {}; // This will hold the state for the CURRENTLY LOGGED IN user.
+let allUsers = {}; // This will hold all user data for the admin panel
+let marketplaceTasks = []; // This will hold the global pool of tasks
 
 // --- DOM Element Selectors ---
 const userInfo = document.getElementById('user-info');
 const balanceEl = document.getElementById('current-balance');
-const notificationList = document.getElementById('notification-list');
+const toastContainer = document.getElementById('toast-container');
 const taskList = document.getElementById('task-list');
 const historyList = document.getElementById('history-list');
 const mainNav = document.getElementById('main-nav');
@@ -86,20 +21,14 @@ const pages = document.querySelectorAll('.page');
 // Constants for task earnings
 const TASK_CREDIT_COST = 1;
 const TASK_COMPLETION_REWARD = 0.10;
+let currentFirebaseUser = null; // Will hold the Firebase auth user object
 
-// --- State Management Functions (with localStorage) ---
-function saveState() {
-    // Save the entire database to localStorage
-    localStorage.setItem('taskAppDatabase', JSON.stringify(database));
-}
-
-function loadState() {
-    const savedDB = localStorage.getItem('taskAppDatabase');
-    if (savedDB) {
-        database = JSON.parse(savedDB);
+// --- State Management Functions (with Firebase) ---
+function saveAppState() {
+    if (currentFirebaseUser) {
+        firebase.database().ref('users/' + currentFirebaseUser.uid).set(appState);
     }
 }
-
 function logHistory(description, amount) {
     const timestamp = new Date().toISOString();
     appState.history.unshift({ description, amount, timestamp }); // Add to the beginning of the array
@@ -114,10 +43,17 @@ function updateBalanceUI() {
 
 function addNotification(message, type = 'info') { // type can be 'info', 'success', 'error'
     const newNotification = document.createElement('div');
-    newNotification.className = `notification ${type}`;
+    toast.className = `toast notification ${type}`;
     const title = type.charAt(0).toUpperCase() + type.slice(1);
-    newNotification.innerHTML = `<strong>${title}:</strong> ${message}`;
-    notificationList.prepend(newNotification);
+    toast.innerHTML = `<strong>${title}:</strong> ${message}`;
+    toastContainer.appendChild(toast);
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 100);
+    setTimeout(() => {
+        toast.classList.remove('show');
+        toast.addEventListener('transitionend', () => toast.remove());
+    }, 5000);
 }
 
 function renderTasks() {
@@ -167,7 +103,7 @@ function renderMarketplaceTasks() {
     marketplaceTaskList.innerHTML = '';
     const userTaskIds = appState.tasks.map(t => t.id);
 
-    database.marketplaceTasks.forEach(task => {
+    marketplaceTasks.forEach(task => {
         // Don't show tasks the user has already reserved
         if (userTaskIds.includes(task.id)) {
             return;
@@ -236,8 +172,8 @@ function renderUserManagementTable() {
             </thead>
             <tbody>
     `;
-    for (const email in database.users) {
-        const user = database.users[email];
+    for (const uid in allUsers) {
+        const user = allUsers[uid];
         if (user.role === 'admin') continue; // Don't show admin in the list
         const statusClass = user.status === 'blocked' ? 'status-blocked' : '';
         const buttonText = user.status === 'active' ? 'Block' : 'Unblock';
@@ -247,7 +183,7 @@ function renderUserManagementTable() {
                 <td>${user.email}</td>
                 <td>$${user.balance.toFixed(2)}</td>
                 <td class="${statusClass}">${user.status.charAt(0).toUpperCase() + user.status.slice(1)}</td>
-                <td><button data-action="toggle-block" data-user-email="${email}">${buttonText}</button></td>
+                <td><button data-action="toggle-block" data-user-uid="${uid}">${buttonText}</button></td>
             </tr>
         `;
     }
@@ -260,8 +196,8 @@ function renderPendingTasks() {
     container.innerHTML = '';
     let hasPendingTasks = false;
 
-    for (const userEmail in database.users) {
-        const user = database.users[userEmail];
+    for (const uid in allUsers) {
+        const user = allUsers[uid];
         user.tasks.forEach(task => {
             if (task.status === 'pending') {
                 hasPendingTasks = true;
@@ -274,8 +210,8 @@ function renderPendingTasks() {
                         <strong>Submission:</strong> <em>"${task.submission}"</em>
                     </div>
                     <div>
-                        <button data-action="approve" data-user-email="${userEmail}" data-task-id="${task.id}" style="background-color: var(--success-color);">Approve</button>
-                        <button data-action="reject" data-user-email="${userEmail}" data-task-id="${task.id}" style="background-color: var(--error-color); margin-left: 0.5rem;">Reject</button>
+                        <button data-action="approve" data-user-uid="${uid}" data-task-id="${task.id}" style="background-color: var(--success-color);">Approve</button>
+                        <button data-action="reject" data-user-uid="${uid}" data-task-id="${task.id}" style="background-color: var(--error-color); margin-left: 0.5rem;">Reject</button>
                     </div>
                 `;
                 container.appendChild(taskEl);
@@ -289,18 +225,20 @@ function renderPendingTasks() {
 }
 
 function handleTaskApproval(userEmail, taskId, isApproved) {
-    const user = database.users[userEmail];
+    // This function now needs to update the user's data in Firebase
+    const userRef = firebase.database().ref('users/' + userEmail); // userEmail is now the UID
+    const user = allUsers[userEmail];
     const task = user.tasks.find(t => t.id === taskId);
     if (!task) return;
 
     if (isApproved) {
         task.status = 'completed';
+        user.balance += TASK_COMPLETION_REWARD;
     } else {
         task.status = 'started'; // Return task to user to re-submit
-        user.balance -= TASK_COMPLETION_REWARD; // Reclaim the reward
         logHistory(`Task rejected: "${task.description}"`, -TASK_COMPLETION_REWARD);
     }
-    saveState();
+    userRef.set(user); // Save the updated user object back to Firebase
     renderPendingTasks(); // Refresh the list
 }
 
@@ -318,10 +256,10 @@ function populateAdminUserDropdown() {
     select.name = 'user-select'; // The name attribute for the form
 
     let options = '<option value="">-- Select a User --</option>';
-    for (const emailKey in database.users) {
-        const user = database.users[emailKey];
+    for (const uid in allUsers) {
+        const user = allUsers[uid];
         if (user.role !== 'admin') { // Don't let admin credit themselves this way
-            options += `<option value="${emailKey}">${user.name} (${emailKey})</option>`;
+            options += `<option value="${uid}">${user.name} (${user.email})</option>`;
         }
     }
     select.innerHTML = options;
@@ -397,7 +335,7 @@ function initializeApp() {
     userInfo.querySelector('span').textContent = `Welcome, ${appState.name}!`;
 
     // Check role and show admin panel if applicable
-    if (appState.currentUser.role === 'admin') {
+    if (appState.role === 'admin') {
         userInfo.querySelector('span').textContent += ' (Admin)'; // Add admin tag to welcome message
         document.querySelector('button[data-page="admin"]').style.display = 'inline-block'; // Show the Admin button in the nav
         populateAdminUserDropdown();
@@ -432,7 +370,7 @@ function attachEventListeners() {
         appState.balance -= amount;
         updateBalanceUI();
         logHistory('Withdrawal request', -amount);
-        saveState(); // Save state after balance change
+        saveAppState(); // Save state after balance change
         addNotification(`Successfully requested withdrawal of $${amount.toFixed(2)}.`, 'success');
         e.target.reset();
     });
@@ -467,23 +405,20 @@ function attachEventListeners() {
                 task.submission = submissionText; // Store the user's submission
 
                 // In a real app, the reward is given only after admin approval.
-                // For this prototype, we'll give the reward immediately to show the flow.
-                appState.balance += TASK_COMPLETION_REWARD;
 
                 // Increment daily task counter
                 checkAndResetDailyCounter();
                 appState.tasksCompletedToday++;
                 updateBalanceUI();
-                logHistory(`Task submitted for review: "${task.description}"`, TASK_COMPLETION_REWARD);
                 stateChanged = true;
-                addNotification(`Task submitted for review! $${TASK_COMPLETION_REWARD.toFixed(2)} has been credited.`, 'success');
+                addNotification(`Task submitted for review!`, 'success');
             }
 
             if (stateChanged) {
                 // Re-render tasks to reflect the new status
                 renderTasks();
                 // Save the new state to localStorage
-                saveState();
+                saveAppState();
             }
         }
     });
@@ -495,7 +430,7 @@ function attachEventListeners() {
             }
 
             const taskId = parseInt(e.target.dataset.taskId);
-            const taskToReserve = database.marketplaceTasks.find(t => t.id === taskId);
+            const taskToReserve = marketplaceTasks.find(t => t.id === taskId);
 
             if (taskToReserve) {
                 appState.credits -= TASK_CREDIT_COST;
@@ -504,7 +439,7 @@ function attachEventListeners() {
                 const newTask = { ...taskToReserve, status: 'available' };
                 appState.tasks.push(newTask);
 
-                saveState();
+                saveAppState();
                 renderTasks(); // Update the user's main task list view
                 marketplaceModal.classList.remove('active'); // Close the modal
                 addNotification(`Task "${taskToReserve.description}" reserved successfully!`, 'success');
@@ -577,7 +512,7 @@ function attachEventListeners() {
 
         // Save details to the current user's state
         appState.agreement = agreementDetails;
-        saveState();
+        saveAppState();
 
         addNotification('Your profile and payout details have been saved successfully.', 'success');
     });
@@ -597,14 +532,14 @@ function attachEventListeners() {
         }
 
         // Find the user in the database and update their balance
-        const userToCredit = database.users[selectedUsername];
+        const userToCredit = allUsers[selectedUsername];
         if (userToCredit) {
             userToCredit.credits += amount;
-            logHistory(`Admin credit for ${selectedUsername}`, 0); // No monetary change
-            addNotification(`Admin credit: ${amount} credits have been added to ${selectedUsername}'s account.`, 'success');
+            // Save the updated user data back to Firebase
+            firebase.database().ref('users/' + selectedUsername).set(userToCredit);
+            addNotification(`Admin credit: ${amount} credits have been added to ${userToCredit.name}'s account.`, 'success');
         }
 
-        saveState(); // Save state after admin credit
         e.target.reset();
     });
 
@@ -618,44 +553,53 @@ function attachEventListeners() {
 
     adminPage.addEventListener('click', (e) => {
         if (e.target.dataset.action === 'toggle-block') {
-            const userEmail = e.target.dataset.userEmail;
-            const user = database.users[userEmail];
+            const userUid = e.target.dataset.userUid;
+            const user = allUsers[userUid];
             if (user) {
                 // Toggle the user's status
                 user.status = user.status === 'active' ? 'blocked' : 'active';
-                saveState();
+                firebase.database().ref('users/' + userUid).child('status').set(user.status);
                 renderUserManagementTable(); // Re-render the table to show the change
                 addNotification(`User ${user.name} has been ${user.status}.`, 'success');
             }
         } else if (e.target.dataset.action === 'approve') {
-            const userEmail = e.target.dataset.userEmail;
+            const userUid = e.target.dataset.userUid;
             const taskId = parseInt(e.target.dataset.taskId);
-            handleTaskApproval(userEmail, taskId, true);
+            handleTaskApproval(userUid, taskId, true);
         } else if (e.target.dataset.action === 'reject') {
-            const userEmail = e.target.dataset.userEmail;
+            const userUid = e.target.dataset.userUid;
             const taskId = parseInt(e.target.dataset.taskId);
-            handleTaskApproval(userEmail, taskId, false);
+            handleTaskApproval(userUid, taskId, false);
         }
     });
 }
 
 // --- Run the App ---
-const loggedInUsername = localStorage.getItem('loggedInUser');
+firebase.auth().onAuthStateChanged(user => {
+    if (user) {
+        // User is signed in.
+        currentFirebaseUser = user;
+        const userRef = firebase.database().ref('users/' + user.uid);
+        
+        // Fetch user's profile data
+        userRef.on('value', (snapshot) => {
+            appState = snapshot.val();
+            if (appState) {
+                checkAndResetDailyCounter();
+                attachEventListeners();
+                initializeApp();
+            }
+        });
 
-if (!loggedInUsername) {
-    // If no user is logged in, redirect to the login page.
-    window.location.href = 'login.html';
-} else if (database.users[loggedInUsername]) {
-    // If a user is logged in, load their data into the appState
-    appState = database.users[loggedInUsername];
-    // The key in the database is the email, which serves as the unique ID
-    checkAndResetDailyCounter(); // Check activity status on login
-    appState.currentUser = { name: appState.name, role: database.users[loggedInUsername].role };
-    saveState(); // Save any changes from the daily check
-    attachEventListeners(); // Attach all event listeners for the dashboard
-    initializeApp(); // Initialize the dashboard
-}
+        // Fetch all users for admin panel and marketplace tasks
+        firebase.database().ref('users').on('value', (snapshot) => { allUsers = snapshot.val(); });
+        firebase.database().ref('marketplaceTasks').on('value', (snapshot) => { marketplaceTasks = snapshot.val() || []; });
 
+    } else {
+        // User is signed out.
+        window.location.replace('login.html');
+    }
+});
 
 // To reset the state for testing, you can open the browser console and run:
 // localStorage.removeItem('taskAppDatabase'); location.reload();
