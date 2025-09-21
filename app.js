@@ -77,9 +77,6 @@ const taskList = document.getElementById('task-list');
 const historyList = document.getElementById('history-list');
 const mainNav = document.getElementById('main-nav');
 const adminPage = document.getElementById('page-admin');
-const marketplaceModal = document.getElementById('marketplace-modal');
-const openMarketplaceBtn = document.getElementById('open-marketplace-btn');
-const closeMarketplaceBtn = document.getElementById('close-marketplace-btn');
 const marketplaceTaskList = document.getElementById('marketplace-task-list');
 const pages = document.querySelectorAll('.page');
 
@@ -195,12 +192,12 @@ function renderMarketplaceTasks() {
     const userTaskIds = appState.tasks.map(t => t.id);
 
     if (database.marketplaceTasks.length === 0) {
-        marketplaceTaskList.innerHTML = '<p>No new tasks are available in the marketplace right now. The admin can generate more.</p>';
+        marketplaceTaskList.innerHTML = '<p>No new tasks are available right now. The admin can generate more.</p>';
         return;
     }
 
     database.marketplaceTasks.forEach(task => {
-        // Don't show tasks the user has already reserved
+        // Don't show tasks in the marketplace if the user has already reserved them
         if (userTaskIds.includes(task.id)) {
             return;
         }
@@ -443,6 +440,7 @@ function initializeApp() {
     // Initial UI setup
     updateBalanceUI();
     renderTasks();
+    renderMarketplaceTasks();
     // renderHistory(); // No need to render it initially, only when page is viewed
     addNotification('Welcome to the platform! Complete tasks to earn money.', 'info');
 }
@@ -542,7 +540,7 @@ function attachEventListeners() {
 
                 saveState();
                 renderTasks(); // Update the user's main task list view
-                marketplaceModal.classList.remove('active'); // Close the modal
+                renderMarketplaceTasks(); // Update the marketplace to remove the reserved task
                 addNotification(`Task "${taskToReserve.description}" reserved successfully!`, 'success');
             }
         }
@@ -565,7 +563,11 @@ function attachEventListeners() {
             if (pageId === 'history') {
                 renderHistory();
             }
-            if (pageId === 'profile' && document.getElementById('profile-form')) {
+            if (pageId === 'tasks') {
+                renderTasks();
+                renderMarketplaceTasks();
+            }
+            if (pageId === 'profile') {
                 populateAgreementForm();
             }
             if (pageId === 'info') {
@@ -577,16 +579,6 @@ function attachEventListeners() {
                 renderPendingTasks();
             }
         }
-    });
-
-    // --- Marketplace Modal Handlers ---
-    openMarketplaceBtn.addEventListener('click', () => {
-        renderMarketplaceTasks();
-        marketplaceModal.classList.add('active');
-    });
-
-    closeMarketplaceBtn.addEventListener('click', () => {
-        marketplaceModal.classList.remove('active');
     });
 
     const profileForm = document.getElementById('profile-form');
@@ -674,16 +666,6 @@ function attachEventListeners() {
         }
     });
 
-    // --- Marketplace Modal Handlers ---
-    openMarketplaceBtn.addEventListener('click', () => {
-        renderMarketplaceTasks();
-        marketplaceModal.classList.add('active');
-    });
-
-    closeMarketplaceBtn.addEventListener('click', () => {
-        marketplaceModal.classList.remove('active');
-    });
-
     const generateTasksBtn = document.getElementById('generate-tasks-btn');
     if (generateTasksBtn) generateTasksBtn.addEventListener('click', async () => {
         addNotification('Generating new tasks from Google API... Please wait.', 'info');
@@ -700,6 +682,7 @@ function attachEventListeners() {
 
         database.marketplaceTasks = generatedTasks; // Replace the old marketplace tasks
         saveState();
+        renderMarketplaceTasks(); // Re-render the marketplace with the new tasks
         addNotification(`${generatedTasks.length} new tasks have been generated and added to the marketplace!`, 'success');
         generateTasksBtn.disabled = false;
     });
