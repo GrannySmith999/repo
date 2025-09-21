@@ -1,76 +1,53 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const registerForm = document.getElementById('register-form');
-    const notificationArea = document.getElementById('notification-area');
-
-    registerForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const username = e.target.elements['new-username'].value.trim();
-        const email = e.target.elements['new-email'].value.trim().toLowerCase();
-        const password = e.target.elements['new-password'].value;
-        const confirmPassword = e.target.elements['confirm-password'].value;
-
-        // Load existing database from localStorage or create a new one
-        let database = JSON.parse(localStorage.getItem('taskAppDatabase')) || { users: {} };
-
-        // --- Validation ---
-        if (!username || username.length < 3) {
-            return showNotification('Username must be at least 3 characters long.', 'error');
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Account - Review Master</title>
+    <style>
+        :root { 
+            --primary-color: #8a63d2; /* A friendly purple */
+            --success-color: #2dce89;
+            --dark-bg: #2a2a3e; /* Dark purple background */
+            --medium-bg: #4a4a68;
+            --light-text: #e0e0e0;
+            --medium-text: #b0b0d0;
         }
-        if (username.toLowerCase() === 'admin') {
-            return showNotification('This username is reserved.', 'error');
-        }
-        // Check if username is already taken by iterating through users
-        const usernameExists = Object.values(database.users).some(user => user.name.toLowerCase() === username.toLowerCase());
-        if (usernameExists) {
-            return showNotification('This username is already taken.', 'error');
-        }
-        if (!email.includes('@') || !email.includes('.')) { // Basic email validation
-            return showNotification('Please enter a valid email address.', 'error');
-        }
-        if (password.length < 6) {
-            return showNotification('Password must be at least 6 characters long.', 'error');
-        }
-        if (password !== confirmPassword) {
-            return showNotification('Passwords do not match.', 'error');
-        }
-        if (database.users[email]) {
-            return showNotification('An account with this email already exists.', 'error');
-        }
+        body { font-family: 'Nunito', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--dark-bg); color: var(--light-text); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { background: var(--medium-bg); padding: 2.5rem; border-radius: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); width: 90%; max-width: 400px; border: 1px solid rgba(255, 255, 255, 0.1); }
+        h2 { text-align: center; margin-top: 0; color: var(--light-text); }
+        form { display: flex; flex-direction: column; }
+        label { margin-bottom: 0.5rem; font-weight: bold; color: var(--medium-text); }
+        input { padding: 0.8rem 1rem; border: 1px solid transparent; border-radius: 12px; margin-bottom: 1rem; font-size: 1rem; background-color: #3a3a5a; color: var(--light-text); transition: all 0.2s ease; }
+        input:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(138, 99, 210, 0.5); }
+        button { background-color: var(--success-color); color: white; padding: 0.8rem 1.5rem; border: none; border-radius: 12px; cursor: pointer; font-size: 1rem; font-weight: bold; transition: all 0.2s ease; }
+        button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .login-link { text-align: center; margin-top: 1rem; }
+        .login-link a { color: var(--primary-color); text-decoration: underline; }
+        .notification { padding: 1rem; margin-bottom: 1rem; border-left: 4px solid; border-radius: 4px; background: var(--medium-bg); }
+        .notification.error { border-left-color: #f5365c; color: #f8d7da; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="notification-area"></div>
+        <form id="register-form">
+            <h2>Create Account</h2>
+            <label for="new-username">Username</label>
+            <input type="text" id="new-username" name="new-username" required autocomplete="username">
+            <label for="new-email">Email</label>
+            <input type="email" id="new-email" name="new-email" required autocomplete="email">
+            <label for="new-password">Password</label>
+            <input type="password" id="new-password" name="new-password" required autocomplete="new-password">
+            <label for="confirm-password">Confirm Password</label>
+            <input type="password" id="confirm-password" name="confirm-password" required autocomplete="new-password">
+            <button type="submit">Create Account & Login</button>
+            <div class="login-link">
+                Already have an account? <a href="login.html">Login here</a>
+            </div>
+        </form>
+    </div>
 
-        // --- Create New User ---
-        // WARNING: Storing passwords in plain text is insecure.
-        // This is for prototyping only. A real app MUST hash passwords on a server.
-        database.users[email] = {
-            password: password,
-            name: username, // Store the chosen username
-            email: email, // Store the email as well
-            status: 'active', // New users are active by default
-            credits: 50, // New users start with 50 credits
-            agreement: null, // No agreement submitted initially
-            role: 'user',
-            tasksCompletedToday: 0,
-            tasksAssignedToday: 0,
-            dailyTaskQuota: 5, // Default quota for new users
-            lastActivityDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD
-            balance: 0.00, // New users start with $0 balance
-            tasks: [], // Start with an empty task list; they can get tasks from the marketplace.
-            history: []
-        };
-
-        // --- Save and Redirect ---
-        // Save the updated database
-        localStorage.setItem('taskAppDatabase', JSON.stringify(database));
-        // "Log in" the user by saving their email
-        localStorage.setItem('loggedInUser', email);
-
-        // Redirect to the main dashboard
-        window.location.href = 'index.html';
-    });
-
-    function showNotification(message, type) {
-        notificationArea.innerHTML = ''; // Clear previous notifications
-        const notification = document.createElement('div');
-        const title = type.charAt(0).toUpperCase() + type.slice(1);
-        notification.className = `notification ${type}`;
-        notification.innerHTML = `<strong>${title}:</strong> ${message}`;
-   
+    <script src="register.js" defer></script>
+</body>
+</html>
