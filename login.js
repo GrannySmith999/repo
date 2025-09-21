@@ -19,7 +19,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         for (const key in database.users) {
             const potentialUser = database.users[key];
-            if (potentialUser.email.toLowerCase() === identifier.toLowerCase() || potentialUser.name.toLowerCase() === identifier.toLowerCase()) {
+            const identifierLower = identifier.toLowerCase();
+            if (potentialUser.email.toLowerCase() === identifierLower || potentialUser.name.toLowerCase() === identifierLower) {
                 user = potentialUser;
                 userKey = key;
                 break;
