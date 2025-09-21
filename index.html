@@ -110,25 +110,27 @@
         <!-- Page Container -->
         <div id="page-container">
             <!-- Tasks Page -->
-            <div id="page-tasks" class="page active">
+            <div id="page-tasks" class="page active" style="display: flex; flex-direction: column; gap: 1.5rem;">
                 <section class="dashboard-section" id="marketplace-section">
                     <h3>🛒 Task Marketplace (Unclaimed)</h3>
                     <div id="marketplace-task-list"></div>
                 </section>
 
-                <section class="dashboard-section" id="in-progress-section">
-                    <h3>💪 In Progress Tasks</h3>
-                    <div id="in-progress-task-list"></div>
-                </section>
+                <section class="dashboard-section" id="my-tasks-section">
+                    <h3>My Assigned Tasks</h3>
+                    <!-- Sub-navigation for user's tasks -->
+                    <nav class="main-nav" id="task-sub-nav" style="padding: 0.5rem; margin-bottom: 1.5rem;">
+                        <button data-task-tab="available" class="active">Available</button>
+                        <button data-task-tab="in-progress">In Progress</button>
+                        <button data-task-tab="pending">Pending/Completed</button>
+                        <button data-task-tab="rejected" style="display: none;">Rejected</button>
+                    </nav>
 
-                <section class="dashboard-section" id="pending-section">
-                    <h3>⏳ Pending & Approved Tasks</h3>
-                    <div id="pending-task-list"></div>
-                </section>
-
-                <section class="dashboard-section" id="rejected-section" style="display: none;">
-                    <h3>❌ Rejected Tasks</h3>
-                    <div id="rejected-task-list"></div>
+                    <!-- Containers for each task category -->
+                    <div id="available-task-list" class="task-tab-content active"></div>
+                    <div id="in-progress-task-list" class="task-tab-content"></div>
+                    <div id="pending-task-list" class="task-tab-content"></div>
+                    <div id="rejected-task-list" class="task-tab-content"></div>
                 </section>
             </div>
 
@@ -250,7 +252,7 @@
                     <p>Generate new tasks for the marketplace using the Google API. This will add to the existing pool of tasks.</p>
                     <div id="task-generation-controls" class="admin-form" style="flex-direction: row; align-items: center; gap: 1rem;">
                         <label for="generate-tasks-amount" style="margin-bottom: 0;">Number of Tasks (1-100):</label>
-                        <input type="number" id="generate-tasks-amount" name="generate-tasks-amount" value="10" min="1" max="100" style="margin-bottom: 0; width: 80px;">
+                        <input type="number" id="generate-tasks-amount" name="generate-tasks-amount" value="20" min="1" max="100" style="margin-bottom: 0; width: 80px;">
                         <button id="generate-tasks-btn">Generate New Tasks</button>
                     </div>
 
@@ -295,5 +297,3 @@
     <script src="init.js" defer></script>
     <script src="app.js" defer></script>
 </body>
-
-</html>
