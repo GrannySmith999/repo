@@ -66,13 +66,12 @@ let database = {
     ]
 };
 
-loadState(); // Load the database from localStorage AFTER the default database is defined.
 let appState = {}; // This will hold the state for the CURRENTLY LOGGED IN user.
 
 // --- DOM Element Selectors ---
 const userInfo = document.getElementById('user-info');
-const balanceEl = document.getElementById('current-balance');
-const notificationList = document.getElementById('notification-list');
+const balanceEl = document.getElementById('current-balance'); // Note: This element is on the Stats page
+const toastContainer = document.getElementById('toast-container');
 const taskList = document.getElementById('task-list');
 const historyList = document.getElementById('history-list');
 const mainNav = document.getElementById('main-nav');
@@ -84,7 +83,7 @@ const marketplaceTaskList = document.getElementById('marketplace-task-list');
 const pages = document.querySelectorAll('.page');
 
 // Constants for task earnings
-const TASK_CREDIT_COST = 1;
+const TASK_CREDIT_COST = 2;
 const TASK_COMPLETION_REWARD = 0.10;
 
 // --- State Management Functions (with localStorage) ---
@@ -95,6 +94,7 @@ function saveState() {
 
 function loadState() {
     const savedDB = localStorage.getItem('taskAppDatabase');
+    // Overwrite the default database if a saved one exists
     if (savedDB) {
         database = JSON.parse(savedDB);
     }
@@ -108,16 +108,28 @@ function logHistory(description, amount) {
 
 // --- UI Update Functions ---
 function updateBalanceUI() {
-    balanceEl.innerText = `$${appState.balance.toFixed(2)}`;
+    if (balanceEl) balanceEl.innerText = `$${appState.balance.toFixed(2)}`;
     userInfo.querySelector('.credits').textContent = `Credits: ${appState.credits}`;
 }
 
 function addNotification(message, type = 'info') { // type can be 'info', 'success', 'error'
-    const newNotification = document.createElement('div');
-    newNotification.className = `notification ${type}`;
+    const toast = document.createElement('div');
+    toast.className = `toast notification ${type}`;
     const title = type.charAt(0).toUpperCase() + type.slice(1);
-    newNotification.innerHTML = `<strong>${title}:</strong> ${message}`;
-    notificationList.prepend(newNotification);
+    toast.innerHTML = `<strong>${title}:</strong> ${message}`;
+    
+    toastContainer.appendChild(toast);
+
+    // Animate in
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 100); // Small delay to allow CSS transition
+
+    // Animate out and remove
+    setTimeout(() => {
+        toast.classList.remove('show');
+        toast.addEventListener('transitionend', () => toast.remove());
+    }, 5000); // Disappear after 5 seconds
 }
 
 function renderTasks() {
@@ -141,9 +153,9 @@ function renderTasks() {
             </div>
         `;
 
-        if (task.status === 'available') { // User can start the task
-            taskHTML += `<button data-task-id="${task.id}" data-action="start">Start Task (Cost: ${TASK_CREDIT_COST} Credit)</button>`;
-        } else if (task.status === 'started') { // Task is in progress, user needs to submit proof
+        if (task.status === 'available') {
+            taskHTML += `<button data-task-id="${task.id}" data-action="start">Start Task</button>`;
+        } else if (task.status === 'started') {
             taskEl.innerHTML = `
                 ${taskHTML}
                 <div class="task-submission">
@@ -152,8 +164,8 @@ function renderTasks() {
                     <button data-task-id="${task.id}" data-action="finish">Submit for Review</button>
                 </div>
             `;
-        } else if (task.status === 'pending') { // Task is awaiting admin approval
-            taskHTML += `<span><strong>Status:</strong> Pending Review</span>`;
+        } else if (task.status === 'pending') {
+            taskHTML += `<span class="status-badge status-pending">Pending Review</span>`;
         }
 
         // Only set innerHTML if it wasn't already set for the 'started' case
@@ -180,7 +192,7 @@ function renderMarketplaceTasks() {
                 <strong>${task.type}:</strong> ${task.description}<br>
                 <em>Instructions: ${task.instructions}</em>
             </div>
-            <button data-task-id="${task.id}" data-action="reserve">Reserve Task (1 Credit)</button>
+            <button data-task-id="${task.id}" data-action="reserve">Reserve Task (${TASK_CREDIT_COST} Credits)</button>
         `;
         marketplaceTaskList.appendChild(taskEl);
     });
@@ -340,10 +352,11 @@ function populateAdminUserDropdown() {
  * @returns {Promise<object|null>} A new task object or null if generation fails.
  */
 async function generateNewTaskFromAPI(taskType) {
-    // In a real implementation, you would get these from a secure place.
-    const API_KEY = 'PASTE_YOUR_NEW_API_KEY_HERE'; // IMPORTANT: Replace with your new, secure key
+    // IMPORTANT: Replace with your new, secure key. Do not commit this to a public repository.
+    const API_KEY = 'PASTE_YOUR_NEW_API_KEY_HERE'; 
     const SEARCH_ENGINE_ID = '01efd7843a7744ad0'; // Your Search Engine ID
 
+    // Use random keywords to get different results each time
     let query = '';
     if (taskType === 'YouTube Comment') {
         query = 'inurl:youtube.com "travel vlog" "new york"';
@@ -410,6 +423,7 @@ function initializeApp() {
     // Initial UI setup
     updateBalanceUI();
     renderTasks();
+    loadState(); // Load data from localStorage
     // renderHistory(); // No need to render it initially, only when page is viewed
     addNotification('Welcome to the platform! Complete tasks to earn money.', 'info');
 }
@@ -639,6 +653,26 @@ function attachEventListeners() {
             const taskId = parseInt(e.target.dataset.taskId);
             handleTaskApproval(userEmail, taskId, false);
         }
+    });
+
+    const generateTasksBtn = document.getElementById('generate-tasks-btn');
+    if (generateTasksBtn) generateTasksBtn.addEventListener('click', async () => {
+        addNotification('Generating new tasks from Google API... Please wait.', 'info');
+        generateTasksBtn.disabled = true;
+
+        const newTasks = [];
+        // Generate 5 of each type
+        for (let i = 0; i < 5; i++) {
+            newTasks.push(generateNewTaskFromAPI('YouTube Comment'));
+            newTasks.push(generateNewTaskFromAPI('Google Review'));
+        }
+
+        const generatedTasks = (await Promise.all(newTasks)).filter(task => task !== null);
+
+        database.marketplaceTasks = generatedTasks; // Replace the old marketplace tasks
+        saveState();
+        addNotification(`${generatedTasks.length} new tasks have been generated and added to the marketplace!`, 'success');
+        generateTasksBtn.disabled = false;
     });
 }
 
