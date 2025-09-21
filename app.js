@@ -357,6 +357,37 @@ handleAssignTaskToUser(taskId) {
     }
 },
 
+handleManualAssignTasks(targetUid, amountToAssign) {
+    if (!targetUid || !amountToAssign) {
+        return this.addNotification('Invalid user or amount.', 'error');
+    }
+
+    const targetUser = this.allUsers[targetUid];
+    if (!targetUser) {
+        return this.addNotification('User not found.', 'error');
+    }
+
+    // Filter out tasks the user already has
+    const userTaskIds = targetUser.tasks ? targetUser.tasks.map(t => t.id) : [];
+    const availableMarketplaceTasks = this.marketplaceTasks.filter(task => !userTaskIds.includes(task.id));
+
+    if (availableMarketplaceTasks.length < amountToAssign) {
+        return this.addNotification(`Not enough unique tasks in the marketplace. Only ${availableMarketplaceTasks.length} available.`, 'error');
+    }
+
+    const tasksToAssign = availableMarketplaceTasks.slice(0, amountToAssign);
+    const userTasksRef = firebase.database().ref(`users/${targetUid}/tasks`);
+
+    // Get existing tasks to append to
+    userTasksRef.once('value', (snapshot) => {
+        const existingTasks = snapshot.val() || [];
+        const newTasksForUser = tasksToAssign.map(task => ({ ...task, status: 'available' }));
+        userTasksRef.set([...existingTasks, ...newTasksForUser]);
+    });
+
+    this.addNotification(`Successfully assigned ${amountToAssign} tasks to ${targetUser.name}.`, 'success');
+},
+
 // --- Initialization Function ---
 populateAdminUserDropdown() {
     const adminForm = document.getElementById('admin-credit-form');
@@ -733,7 +764,7 @@ attachEventListeners() {
         generateTasksBtn.addEventListener('click', async () => {
             const numToGenerate = parseInt(document.getElementById('generate-tasks-amount').value, 10);
 
-            if (isNaN(numToGenerate) || numToGenerate <= 0 || numToGenerate > 100) {
+            if (isNaN(numToGenerate) || numToGenerate < 1 || numToGenerate > 100) {
                 return this.addNotification('Please enter a number between 1 and 100.', 'error');
             }
 
@@ -785,6 +816,23 @@ attachEventListeners() {
             this.addNotification(`Assigned a total of ${assignedCount} tasks to ${userCount} active users.`, 'success');
         });
     }
+
+    const manualAssignForm = document.getElementById('manual-assign-form');
+    if (manualAssignForm) {
+        manualAssignForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const targetUid = e.target.elements['user-select'].value;
+            const amountToAssign = parseInt(e.target.elements['manual-assign-amount'].value, 10);
+
+            if (!targetUid) {
+                return this.addNotification('Please select a user to assign tasks to.', 'error');
+            }
+            if (isNaN(amountToAssign) || amountToAssign <= 0) {
+                return this.addNotification('Please enter a valid number of tasks to assign.', 'error');
+            }
+            this.handleManualAssignTasks(targetUid, amountToAssign);
+        });
+    }
 },
 
 start(user) {
@@ -804,6 +852,7 @@ start(user) {
                     this.renderUserManagementTable();
                     this.renderPendingTasks();
                     this.populateAdminUserDropdown();
+                    this.populateAdminUserDropdown(document.getElementById('manual-assign-form')); // Populate the new form's dropdown
                 });
             }
 
