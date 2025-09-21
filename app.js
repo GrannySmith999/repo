@@ -866,7 +866,13 @@ start(user) {
     });
 
     // Listen for marketplace tasks and re-render the list when they change.
-    firebase.database().ref('marketplaceTasks').on('value', (snapshot) => { this.marketplaceTasks = snapshot.val() || []; this.renderMarketplaceTasks(); });
+    firebase.database().ref('marketplaceTasks').on('value', (snapshot) => { 
+        this.marketplaceTasks = snapshot.val() || []; 
+        // Only re-render the marketplace if the user is currently on the tasks page.
+        if (this.dom.pageTasks.classList.contains('active')) {
+            this.renderMarketplaceTasks(); 
+        }
+    });
 },
 
 cacheDom() {
