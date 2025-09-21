@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 name: username,
                 email: email,
                 status: 'active',
-                credits: 50,
+                credits: 0, // New users start with 0 credits
                 agreement: null,
                 role: 'user',
                 tasksCompletedToday: 0,
