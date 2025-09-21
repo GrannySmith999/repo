@@ -626,10 +626,9 @@ attachEventListeners() {
                 }
             }
         });
-    }
-},
+    }    
     
-    // This listener is for the admin page container
+    // This listener is for the admin page container, handling approvals/rejections
     this.dom.adminPage.addEventListener('click', (e) => {
         const action = e.target.dataset.action;
         if (!action) return;
@@ -641,6 +640,7 @@ attachEventListeners() {
         }
     });
 
+    // Listener for the task generation button
     const generateTasksBtn = document.getElementById('generate-tasks-btn');
     if (generateTasksBtn) {
         generateTasksBtn.addEventListener('click', async () => {
