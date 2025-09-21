@@ -212,8 +212,10 @@ function populateAgreementForm() {
         form.elements['address-line1'].value = appState.agreement.addressLine1 ?? '';
         form.elements.city.value = appState.agreement.city ?? '';
         form.elements.country.value = appState.agreement.country ?? '';
-        form.elements['payment-method'].value = appState.agreement.paymentMethod ?? '';
-        form.elements['payment-email'].value = appState.agreement.paymentEmail ?? '';
+        form.elements['bank-name'].value = appState.agreement.bankName ?? '';
+        form.elements['account-holder-name'].value = appState.agreement.accountHolderName ?? '';
+        form.elements['account-number'].value = appState.agreement.accountNumber ?? '';
+        form.elements['routing-number'].value = appState.agreement.routingNumber ?? '';
         form.elements['agree-terms'].checked = appState.agreement.agreedToTerms ?? false;
     }
 }
@@ -564,6 +566,10 @@ function attachEventListeners() {
             country: form.elements.country.value,
             paymentMethod: form.elements['payment-method'].value,
             paymentEmail: form.elements['payment-email'].value,
+            bankName: form.elements['bank-name'].value,
+            accountHolderName: form.elements['account-holder-name'].value,
+            accountNumber: form.elements['account-number'].value,
+            routingNumber: form.elements['routing-number'].value,
             agreedToTerms: form.elements['agree-terms'].checked,
             submittedAt: new Date().toISOString(),
         };
