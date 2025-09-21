@@ -13,6 +13,8 @@ let database = {
             agreement: null, // Will hold agreement details
             tasksCompletedToday: 0,
             lastActivityDate: '2023-01-01', // Example past date
+            tasksAssignedToday: 0,
+            dailyTaskQuota: 10,
             credits: 50, 
             tasks: [], // User's personal reserved tasks
             history: []
@@ -27,6 +29,8 @@ let database = {
             agreement: null,
             tasksCompletedToday: 10, // Example value
             lastActivityDate: new Date().toISOString().split('T')[0],
+            tasksAssignedToday: 3,
+            dailyTaskQuota: 20,
             credits: 25, 
             tasks: [],
             history: []
@@ -36,33 +40,11 @@ let database = {
             name: 'admin',
             email: 'admin@example.com',
             status: 'active',
-            role: 'admin', balance: 0, credits: 999, tasks: [], history: [], agreement: null, tasksCompletedToday: 0, lastActivityDate: new Date().toISOString().split('T')[0]
+            role: 'admin', balance: 0, credits: 999, tasks: [], history: [], agreement: null, tasksCompletedToday: 0, tasksAssignedToday: 0, dailyTaskQuota: 999, lastActivityDate: new Date().toISOString().split('T')[0]
         }
     },
-    // Global pool of tasks available in the marketplace
-    marketplaceTasks: [
-        { 
-            id: 101, 
-            type: 'YouTube Comment',
-            description: 'Leave a positive comment on a travel vlog.', 
-            link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-            instructions: 'Watch the video and leave a comment about your favorite part. Keep it positive and engaging.'
-        },
-        { 
-            id: 102, 
-            type: 'Google Review',
-            description: 'Write a 5-star review for a local cafe.',
-            link: 'https://www.google.com/maps/search/?api=1&query=cafe+near+me',
-            instructions: 'Mention the friendly staff and the quality of the coffee in your review.'
-        },
-        { 
-            id: 103, 
-            type: 'Facebook Comment',
-            description: 'Post a supportive comment on a new product launch.',
-            link: 'https://www.facebook.com/',
-            instructions: 'Comment on the post, mentioning how excited you are for the new product.'
-        }
-    ]
+    // Global pool of tasks available in the marketplace. This is populated by the admin.
+    marketplaceTasks: []
 };
 
 loadState(); // Load the database from localStorage AFTER the default database is defined.
@@ -81,8 +63,8 @@ const marketplaceTaskList = document.getElementById('marketplace-task-list');
 const pages = document.querySelectorAll('.page');
 
 // Constants for task earnings
-const TASK_CREDIT_COST = 2;
-const TASK_COMPLETION_REWARD = 0.10;
+const TASK_CREDIT_COST = 1; // This is now for reserving a task
+const TASK_COMPLETION_REWARD = 0.15; // Payout for completing a task
 
 // --- State Management Functions (with localStorage) ---
 function saveState() {
@@ -144,43 +126,44 @@ function renderTasks() {
     }
 
     appState.tasks.forEach(task => {
-        if (task.status === 'completed') return; // Don't render completed tasks
-
         const taskEl = document.createElement('div');
         taskEl.className = 'task';
 
         let statusBadge = '';
-        let taskActions = '';
+        let taskContent = '';
 
         if (task.status === 'available') {
             statusBadge = `<span class="status-badge" style="background-color: var(--success-color);">Available</span>`;
-            taskActions = `<button data-task-id="${task.id}" data-action="start">Start Task</button>`;
+            taskContent = `<p>This task is ready for you to start!</p><div class="task-actions"><button data-task-id="${task.id}" data-action="start">Start Task (1 Credit)</button></div>`;
         } else if (task.status === 'started') {
             statusBadge = `<span class="status-badge" style="background-color: #f0ad4e;">In Progress</span>`;
-            taskActions = `
+            taskContent = `
                 <div class="task-submission">
-                    <a href="${task.link}" target="_blank">Go to Task Link &rarr;</a>
+                    <p><strong>Instructions:</strong> ${task.instructions}</p>
                     <textarea data-task-id="${task.id}" placeholder="Paste the link to your comment/review here as proof."></textarea>
-                    <button data-task-id="${task.id}" data-action="finish">Submit for Review</button>
+                    <div class="task-actions">
+                        <a href="${task.link}" target="_blank" class="link-button" style="text-decoration: none; padding: 0.8rem 1.5rem; border-radius: 12px;">🔗 Go to Review Page</a>
+                        <button data-task-id="${task.id}" data-action="finish">Submit for Approval</button>
+                    </div>
                 </div>
             `;
         } else if (task.status === 'pending') {
             statusBadge = `<span class="status-badge status-pending">Pending Review</span>`;
-            taskActions = `<p><em>Your submission is awaiting admin approval.</em></p>`;
+            taskContent = `<p><em>Your submission is awaiting admin approval. Thank you!</em></p>`;
+        } else if (task.status === 'completed') {
+            statusBadge = `<span class="status-badge" style="background-color: var(--primary-color);">Approved</span>`;
+            taskContent = `<p><em>This task was approved. Great job! 🥳</em></p>`;
         }
 
         taskEl.innerHTML = `
             <div class="task-info">
                 <div class="task-header">
                     <h4>${task.type}</h4>
-                    ${statusBadge}
+                    <div>${statusBadge}</div>
                 </div>
                 <div class="task-body">
                     <p>${task.description}</p>
-                    <p><strong>Instructions:</strong> ${task.instructions}</p>
-                </div>
-                <div class="task-footer">
-                    ${taskActions}
+                    ${taskContent}
                 </div>
             </div>
         `;
@@ -208,10 +191,14 @@ function renderMarketplaceTasks() {
         taskEl.className = 'task';
         taskEl.innerHTML = `
             <div class="task-info">
-                <div class="task-header"><h4>${task.type}</h4></div>
-                <div class="task-body"><p>${task.description}</p></div>
-                <div class="task-footer">
-                    <button data-task-id="${task.id}" data-action="reserve">Reserve Task (${TASK_CREDIT_COST} Credits)</button>
+                <div class="task-header">
+                    <h4>${task.type}</h4>
+                </div>
+                <div class="task-body">
+                    <p>${task.description}</p>
+                    <div class="task-actions">
+                        <button data-task-id="${task.id}" data-action="reserve">Reserve Task (1 Credit)</button>
+                    </div>
                 </div>
             </div>
         `;
@@ -260,6 +247,7 @@ function renderUserManagementTable() {
                 <tr>
                     <th>Username</th>
                     <th>Email</th>
+                    <th>Daily Quota</th>
                     <th>Balance</th>
                     <th>Status</th>
                     <th>Action</th>
@@ -276,6 +264,10 @@ function renderUserManagementTable() {
             <tr>
                 <td>${user.name}</td>
                 <td>${user.email}</td>
+                <td>
+                    <input type="number" value="${user.dailyTaskQuota}" min="5" max="100" style="width: 60px; padding: 0.2rem;" data-user-email="${email}" class="quota-input">
+                    <button data-action="set-quota" data-user-email="${email}">Set</button>
+                </td>
                 <td>$${user.balance.toFixed(2)}</td>
                 <td class="${statusClass}">${user.status.charAt(0).toUpperCase() + user.status.slice(1)}</td>
                 <td><button data-action="toggle-block" data-user-email="${email}">${buttonText}</button></td>
@@ -416,7 +408,7 @@ function checkAndResetDailyCounter() {
     // If the last activity was yesterday or earlier
     if (appState.lastActivityDate < today) {
         // Check if the user met the quota for the last active day
-        if (appState.tasksCompletedToday < 20 && appState.role === 'user') {
+        if (appState.tasksCompletedToday < 50 && appState.role === 'user') {
             appState.status = 'blocked';
             addNotification(`Your account has been suspended for not meeting the daily task requirement of 20 tasks.`, 'error');
         }
@@ -424,6 +416,12 @@ function checkAndResetDailyCounter() {
         // Reset the counter for the new day
         appState.tasksCompletedToday = 0;
     }
+
+    // Also reset the self-assignment counter
+    if (appState.lastActivityDate < today) {
+        appState.tasksAssignedToday = 0;
+    }
+
     // Update the last activity date to today
     appState.lastActivityDate = today;
 }
@@ -523,6 +521,9 @@ function attachEventListeners() {
 
     marketplaceTaskList.addEventListener('click', (e) => {
         if (e.target.dataset.action === 'reserve') {
+            if (appState.tasksAssignedToday >= appState.dailyTaskQuota) {
+                return addNotification(`You have reached your daily limit of ${appState.dailyTaskQuota} assigned tasks.`, 'error');
+            }
             if (appState.credits < TASK_CREDIT_COST) {
                 return addNotification('You do not have enough credits to reserve this task.', 'error');
             }
@@ -532,14 +533,14 @@ function attachEventListeners() {
 
             if (taskToReserve) {
                 appState.credits -= TASK_CREDIT_COST;
+                appState.tasksAssignedToday++;
 
-                // Add the task to the user's personal list with 'available' status
                 const newTask = { ...taskToReserve, status: 'available' };
                 appState.tasks.push(newTask);
 
                 saveState();
-                renderTasks(); // Update the user's main task list view
-                renderMarketplaceTasks(); // Update the marketplace to remove the reserved task
+                renderTasks();
+                renderMarketplaceTasks();
                 addNotification(`Task "${taskToReserve.description}" reserved successfully!`, 'success');
             }
         }
@@ -614,21 +615,21 @@ function attachEventListeners() {
         e.preventDefault();
         const formElements = e.target.elements;
         const selectedUsername = formElements['user-select'].value;
-        const amount = parseFloat(e.target.elements['credit-amount'].value);
+        const amount = parseInt(e.target.elements['credit-amount'].value, 10);
 
         if (!selectedUsername) {
             return addNotification('Please select a user to credit.', 'error');
         }
         if (isNaN(amount) || amount <= 0) {
-            return addNotification('Please enter a valid credit amount.', 'error');
+            return addNotification('Please enter a valid whole number for credits.', 'error');
         }
 
         // Find the user in the database and update their balance
         const userToCredit = database.users[selectedUsername];
         if (userToCredit) {
-            userToCredit.balance += amount;
-            logHistory(`Admin credit for ${selectedUsername}`, amount); // This logs to the admin's history
-            addNotification(`Admin credit: $${amount.toFixed(2)} has been added to ${selectedUsername}'s account.`, 'success');
+            userToCredit.credits += amount;
+            logHistory(`Admin credit for ${selectedUsername}`, 0); // No monetary change
+            addNotification(`Admin credit: ${amount} credits have been added to ${selectedUsername}'s account.`, 'success');
         }
 
         saveState(); // Save state after admin credit
@@ -662,6 +663,15 @@ function attachEventListeners() {
             const userEmail = e.target.dataset.userEmail;
             const taskId = parseInt(e.target.dataset.taskId);
             handleTaskApproval(userEmail, taskId, false);
+        } else if (e.target.dataset.action === 'set-quota') {
+            const userEmail = e.target.dataset.userEmail;
+            const user = database.users[userEmail];
+            const input = adminPage.querySelector(`.quota-input[data-user-email="${userEmail}"]`);
+            if (user && input) {
+                user.dailyTaskQuota = parseInt(input.value, 10);
+                saveState();
+                addNotification(`${user.name}'s daily task quota has been set to ${user.dailyTaskQuota}.`, 'success');
+            }
         }
     });
 
@@ -672,7 +682,7 @@ function attachEventListeners() {
 
         const newTasks = [];
         // Generate 5 of each type
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 49; i++) { // Generate 98 tasks to stay under the 100/day limit
             newTasks.push(generateNewTaskFromAPI('YouTube Comment'));
             newTasks.push(generateNewTaskFromAPI('Google Review'));
         }
