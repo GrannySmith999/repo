@@ -16,6 +16,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!username || username.length < 3) {
             return showNotification('Username must be at least 3 characters long.', 'error');
         }
+        if (username.toLowerCase() === 'admin') {
+            return showNotification('This username is reserved.', 'error');
+        }
         // Check if username is already taken by iterating through users
         const usernameExists = Object.values(database.users).some(user => user.name.toLowerCase() === username.toLowerCase());
         if (usernameExists) {
