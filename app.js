@@ -156,9 +156,8 @@ renderMarketplaceTasks() {
             return;
         }
 
-        const isAdmin = this.appState.role === 'admin';
         // For users, only show tasks matching their tier. Admins see all.
-        if (!isAdmin && task.tier !== this.appState.tier) {
+        if (task.tier !== this.appState.tier && this.appState.role !== 'admin') {
             return;
         }
 
@@ -166,7 +165,7 @@ renderMarketplaceTasks() {
             ? `<button data-task-id="${task.id}" data-action="assign-to-user" class="assign-btn">Assign to User</button>`
             : `<button data-task-id="${task.id}" data-action="reserve">Reserve Task (${userTierInfo.creditCost} Credits)</button>`;
 
-        const taskEl = document.createElement('div');
+        const taskEl = document.createElement('div'); 
         taskEl.className = 'task task-marketplace';
         taskEl.innerHTML = `
             <div class="task-info">
@@ -390,30 +389,32 @@ handleManualAssignTasks(targetUid, amountToAssign) {
 },
 
 // --- Initialization Function ---
-populateAdminUserDropdown() {
-    const adminForm = document.getElementById('admin-credit-form');
+populateAdminUserDropdown(targetForm) {
+    // Default to the credit form if no specific form is provided.
+    const form = targetForm || document.getElementById('admin-credit-form');
+    if (!form) return; // Exit if the form doesn't exist
+
     // Prevent adding duplicate dropdowns
-    const existingSelect = document.getElementById('user-select');
+    const existingSelect = form.querySelector('select[name="user-select"]');
     if (existingSelect) {
         existingSelect.remove();
     }
 
     const select = document.createElement('select');
-    select.id = 'user-select'; // The ID for the select element
     select.name = 'user-select'; // The name attribute for the form
 
     let options = '<option value="">-- Select a User --</option>';
     for (const uid in this.allUsers) {
         const user = this.allUsers[uid];
-        if (user.role !== 'admin') { // Don't let admin credit themselves this way
+        if (user.role !== 'admin') {
             options += `<option value="${uid}">${user.name} (${user.email})</option>`;
         }
     }
     select.innerHTML = options;
 
     // Add the dropdown to the form
-    const creditLabel = adminForm.querySelector('label[for="credit-amount"]');
-    adminForm.insertBefore(select, creditLabel);
+    const firstInput = form.querySelector('label');
+    form.insertBefore(select, firstInput);
 },
 
 /**
@@ -869,7 +870,7 @@ start(user) {
                     this.renderUserManagementTable();
                     this.renderPendingTasks();
                     this.populateAdminUserDropdown();
-                    this.populateAdminUserDropdown(document.getElementById('manual-assign-form')); // Populate the new form's dropdown
+                    this.populateAdminUserDropdown(document.getElementById('manual-assign-form'));
                 });
             }
 
