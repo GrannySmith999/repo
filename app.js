@@ -659,3 +659,26 @@ if (!loggedInUsername) {
 
 // To reset the state for testing, you can open the browser console and run:
 // localStorage.removeItem('taskAppDatabase'); location.reload();
+
+/**
+ * ONE-TIME UTILITY FUNCTION for the admin to create their database profile.
+ * After adding the admin user in Firebase Authentication, log in as admin,
+ * then open the browser console and run: createAdminProfile()
+ */
+function createAdminProfile() {
+    const user = firebase.auth().currentUser;
+    if (user && user.email === 'admin@example.com') {
+        const adminProfile = {
+            name: 'admin',
+            email: 'admin@example.com',
+            status: 'active',
+            role: 'admin',
+            // ... add other default admin properties here if needed
+        };
+        firebase.database().ref('users/' + user.uid).set(adminProfile)
+            .then(() => console.log('Admin profile created successfully in the database!'))
+            .catch(error => console.error('Error creating admin profile:', error));
+    } else {
+        console.log('You must be logged in as the admin user to run this function.');
+    }
+}
