@@ -1,3 +1,4 @@
+
 document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('login-form');
     const notificationArea = document.getElementById('notification-area');
@@ -20,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
         for (const key in database.users) {
             const potentialUser = database.users[key];
             const identifierLower = identifier.toLowerCase();
-            if (potentialUser.email.toLowerCase() === identifierLower || potentialUser.name.toLowerCase() === identifierLower) {
+            if ((potentialUser.email && potentialUser.email.toLowerCase() === identifierLower) || (potentialUser.name && potentialUser.name.toLowerCase() === identifierLower)) {
                 user = potentialUser;
                 userKey = key;
                 break;
