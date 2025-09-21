@@ -731,7 +731,7 @@ attachEventListeners() {
     });
 
     // Consolidated listener for the entire admin page.
-    this.dom.adminPage.addEventListener('click', (e) => {
+    this.dom.adminPage.addEventListener('click', async (e) => {
         const target = e.target;
         const action = target.dataset.action;
         const userUid = target.dataset.userUid;
@@ -766,27 +766,23 @@ attachEventListeners() {
                 }
             }
         } else if (target.id === 'generate-tasks-btn') { // Use an else-if block
-            // This handles the click on the generate tasks button
-            const handleGeneration = async () => {
-                const numToGenerate = parseInt(document.getElementById('generate-tasks-amount').value, 10);
-                if (isNaN(numToGenerate) || numToGenerate < 1 || numToGenerate > 100) {
-                    return this.addNotification('Please enter a number between 1 and 100.', 'error');
-                }
-                this.addNotification('Generating new tasks... Please wait.', 'info');
-                const newTasksPromises = [];
-                for (let i = 0; i < Math.ceil(numToGenerate / 2); i++) {
-                    newTasksPromises.push(this.generateNewTaskFromAPI('YouTube Comment'));
-                }
-                for (let i = 0; i < Math.floor(numToGenerate / 2); i++) {
-                    newTasksPromises.push(this.generateNewTaskFromAPI('Google Review'));
-                }
-                const generatedTasks = await Promise.all(newTasksPromises);
-                const filteredTasks = generatedTasks.filter(task => task !== null);
-                const updatedMarketplace = [...this.marketplaceTasks, ...filteredTasks];
-                firebase.database().ref('marketplaceTasks').set(updatedMarketplace);
-                this.addNotification(`${filteredTasks.length} new tasks have been generated!`, 'success');
-            };
-            handleGeneration();
+            const numToGenerate = parseInt(document.getElementById('generate-tasks-amount').value, 10);
+            if (isNaN(numToGenerate) || numToGenerate < 1 || numToGenerate > 100) {
+                return this.addNotification('Please enter a number between 1 and 100.', 'error');
+            }
+            this.addNotification('Generating new tasks... Please wait.', 'info');
+            const newTasksPromises = [];
+            for (let i = 0; i < Math.ceil(numToGenerate / 2); i++) {
+                newTasksPromises.push(this.generateNewTaskFromAPI('YouTube Comment'));
+            }
+            for (let i = 0; i < Math.floor(numToGenerate / 2); i++) {
+                newTasksPromises.push(this.generateNewTaskFromAPI('Google Review'));
+            }
+            const generatedTasks = await Promise.all(newTasksPromises);
+            const filteredTasks = generatedTasks.filter(task => task !== null);
+            const updatedMarketplace = [...this.marketplaceTasks, ...filteredTasks];
+            firebase.database().ref('marketplaceTasks').set(updatedMarketplace);
+            this.addNotification(`${filteredTasks.length} new tasks have been generated!`, 'success');
         }
     });
 
@@ -846,14 +842,6 @@ start(user) {
 
     // Fetch user's profile data
     userRef.once('value').then((snapshot) => {
-        // Add a real-time listener for the current user's data
-        userRef.on('value', (userSnapshot) => {
-            this.appState = userSnapshot.val();
-            if (this.dom.pageTasks.classList.contains('active')) {
-                this.renderTasks(); // Re-render personal tasks if on the tasks page
-            }
-            this.updateBalanceUI(); // Always keep balance updated
-        });
         this.appState = snapshot.val();
         if (this.appState) {
             // Set up listeners that depend on the user's role.
@@ -872,6 +860,15 @@ start(user) {
             this.checkAndResetDailyCounter();
             this.initializeApp();
         }
+    });
+
+    // Add a real-time listener for the current user's data
+    userRef.on('value', (userSnapshot) => {
+        this.appState = userSnapshot.val();
+        if (this.appState && this.dom.pageTasks.classList.contains('active')) {
+            this.renderTasks(); // Re-render personal tasks only if on the tasks page
+        }
+        if (this.appState) this.updateBalanceUI(); // Always keep balance updated
     });
 
     // Listen for marketplace tasks and re-render the list when they change.
