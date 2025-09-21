@@ -64,6 +64,7 @@ addNotification(message, type = 'info') { // type can be 'info', 'success', 'err
 renderTasks() {
     // Clear all task lists
     this.dom.inProgressTaskList.innerHTML = '';
+    this.dom.availableTaskList.innerHTML = '';
     this.dom.pendingTaskList.innerHTML = '';
     this.dom.rejectedTaskList.innerHTML = '';
 
@@ -82,7 +83,7 @@ renderTasks() {
         if (task.status === 'available') {
             statusBadge = `<span class="status-badge" style="background-color: var(--success-color);">Available</span>`;
             taskContent = `<p>This task is ready for you to start!</p><div class="task-actions"><button data-task-id="${task.id}" data-action="start">Start Task (${this.getCurrentTierInfo().creditCost} Credits)</button></div>`;
-            targetList = this.dom.inProgressTaskList; // Show available tasks in the "In Progress" section
+            targetList = this.dom.availableTaskList;
             hasInProgress = true;
         } else if (task.status === 'started') {
             statusBadge = `<span class="status-badge" style="background-color: #f0ad4e;">In Progress</span>`;
@@ -128,8 +129,8 @@ renderTasks() {
     if (!hasInProgress) {
         const message = this.appState.credits === 0 
             ? '<p>You have no credits. Please contact your supervisor to get credits and start working.</p>'
-            : '<p>You have no tasks in progress. Reserve one from the marketplace!</p>';
-        this.dom.inProgressTaskList.innerHTML = message;
+            : '<p>You have no available tasks. Reserve one from the marketplace!</p>';
+        this.dom.availableTaskList.innerHTML = message;
     }
     if (!hasPending) this.dom.pendingTaskList.innerHTML = '<p>You have no tasks pending review or approved.</p>';
     // Logic for rejected tasks can be added if a 'rejected' status is implemented
@@ -643,6 +644,22 @@ attachEventListeners() {
         }
     });
 
+    // Listener for the new task sub-navigation tabs
+    const taskSubNav = document.getElementById('task-sub-nav');
+    if (taskSubNav) {
+        taskSubNav.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                const tabId = e.target.dataset.taskTab;
+                // Update active button
+                taskSubNav.querySelector('.active')?.classList.remove('active');
+                e.target.classList.add('active');
+                // Update active tab content
+                document.querySelectorAll('.task-tab-content').forEach(content => {
+                    content.style.display = content.id === `${tabId}-task-list` ? 'block' : 'none';
+                });
+            }
+        });
+    }
     // This listener is for the profile form
     this.dom.profileForm.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -871,6 +888,7 @@ cacheDom() {
     this.dom.toastContainer = document.getElementById('toast-container');
     this.dom.pageTasks = document.getElementById('page-tasks');
     this.dom.inProgressTaskList = document.getElementById('in-progress-task-list');
+    this.dom.availableTaskList = document.getElementById('available-task-list');
     this.dom.pendingTaskList = document.getElementById('pending-task-list');
     this.dom.rejectedTaskList = document.getElementById('rejected-task-list');
     this.dom.historyList = document.getElementById('history-list');
