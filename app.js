@@ -32,9 +32,9 @@ const ReviewMasterApp = {
     saveAppState() {
         if (this.currentFirebaseUser) {
             firebase.database().ref('users/' + this.currentFirebaseUser.uid).set(this.appState);
-    }
-},
-logHistory(description, amount) {
+        }
+    },
+    logHistory(description, amount) {
     const timestamp = new Date().toISOString();
     this.appState.history.unshift({ description, amount, timestamp }); // Add to the beginning of the array
     if (this.appState.history.length > 50) this.appState.history.pop(); // Keep history to a reasonable size
@@ -70,7 +70,7 @@ renderTasks() {
 
     let hasInProgress = false, hasPending = false, hasRejected = false;
 
-    if (!this.appState.tasks) this.appState.tasks = [];
+    if (!this.appState.tasks || !Array.isArray(this.appState.tasks)) this.appState.tasks = [];
     
     this.appState.tasks.forEach(task => {
         const taskEl = document.createElement('div');
@@ -139,7 +139,7 @@ renderTasks() {
 renderMarketplaceTasks() {
     this.dom.marketplaceTaskList.innerHTML = '';
     const userTaskIds = this.appState.tasks ? this.appState.tasks.map(t => t.id) : [];
-
+    
     if (!this.marketplaceTasks || this.marketplaceTasks.length === 0) {
         const message = '<p>No new tasks are available in the marketplace right now. Please check back later.</p>';
         this.dom.marketplaceTaskList.innerHTML = message;
@@ -873,7 +873,7 @@ start(user) {
 
     // Listen for marketplace tasks and re-render the list when they change.
     firebase.database().ref('marketplaceTasks').on('value', (snapshot) => { 
-        this.marketplaceTasks = snapshot.val() || []; 
+        this.marketplaceTasks = snapshot.val() || []; // Ensure it's always an array
         // Only re-render the marketplace if the user is currently on the tasks page.
         if (this.dom.pageTasks.classList.contains('active')) {
             this.renderMarketplaceTasks(); 
