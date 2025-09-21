@@ -247,9 +247,11 @@
                     </div>
 
                     <h2 style="margin-top: 2rem;">Task Generation</h2>
-                    <p>Generate new tasks for the marketplace using the Google API. This will replace all existing tasks in the marketplace.</p>
-                    <div id="task-generation-controls">
-                        <button id="generate-tasks-btn">Generate 10 New Tasks</button>
+                    <p>Generate new tasks for the marketplace using the Google API. This will add to the existing pool of tasks.</p>
+                    <div id="task-generation-controls" class="admin-form" style="flex-direction: row; align-items: center; gap: 1rem;">
+                        <label for="generate-tasks-amount" style="margin-bottom: 0;">Number of Tasks (1-100):</label>
+                        <input type="number" id="generate-tasks-amount" name="generate-tasks-amount" value="10" min="1" max="100" style="margin-bottom: 0; width: 80px;">
+                        <button id="generate-tasks-btn">Generate New Tasks</button>
                     </div>
 
                     <h2 style="margin-top: 2rem;">Auto-Assign Daily Tasks</h2>
@@ -259,6 +261,17 @@
                         <input type="number" id="auto-assign-amount" name="auto-assign-amount" placeholder="e.g., 10" min="1" required>
                         <button type="submit">Auto-Assign to All Users</button>
                     </form>
+
+                    <div class="admin-section" style="margin-top: 2rem;">
+                        <h3>Manually Assign Tasks to a User</h3>
+                        <p>Select a user and specify how many tasks from the marketplace pool you want to assign to them.</p>
+                        <form id="manual-assign-form" class="admin-form">
+                            <!-- The user dropdown will be inserted here by JavaScript -->
+                            <label for="manual-assign-amount">Number of Tasks to Assign:</label>
+                            <input type="number" id="manual-assign-amount" name="manual-assign-amount" min="1" value="5" required>
+                            <button type="submit">Assign Tasks</button>
+                        </form>
+                    </div>
 
                     <h2 style="margin-top: 2rem;">Credit Account</h2>
                     <p>This function is for administrators to manually add credits to user accounts.</p>
