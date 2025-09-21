@@ -144,6 +144,7 @@ renderMarketplaceTasks() {
         const message = this.appState.credits === 0 && (!this.appState.tasks || this.appState.tasks.length === 0)
             ? '<p>You have no credits. Please contact your supervisor to get credits and start working.</p>'
             : '<p>No new tasks are available right now. The admin can generate more.</p>';
+        const message = '<p>No new tasks are available in the marketplace right now. Please check back later.</p>';
         this.dom.marketplaceTaskList.innerHTML = message;
         return;
     }
@@ -504,8 +505,6 @@ initializeApp() {
 
     // Initial UI setup
     this.updateBalanceUI();
-    this.renderTasks();
-    this.renderMarketplaceTasks();
     // renderHistory(); // No need to render it initially, only when page is viewed
     this.addNotification('Welcome to the platform! Complete tasks to earn money.', 'info');
 },
@@ -634,6 +633,8 @@ attachEventListeners() {
             }
             if (pageId === 'tasks') {
                 this.renderMarketplaceTasks();
+                // Also re-render the user's personal tasks when they navigate back to the tasks page
+                this.renderTasks();
             }
             if (pageId === 'profile') {
                 this.populateAgreementForm();
