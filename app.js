@@ -150,31 +150,41 @@ function renderTasks() {
         const taskEl = document.createElement('div');
         taskEl.className = 'task';
 
-        // Base task info
-        let taskHTML = `
-            <div class="task-info">
-                <strong>${task.type}:</strong> ${task.description}<br>
-                <em>Instructions: ${task.instructions}</em>
-            </div>
-        `;
+        let statusBadge = '';
+        let taskActions = '';
 
         if (task.status === 'available') {
-            taskHTML += `<button data-task-id="${task.id}" data-action="start">Start Task</button>`;
+            statusBadge = `<span class="status-badge" style="background-color: var(--success-color);">Available</span>`;
+            taskActions = `<button data-task-id="${task.id}" data-action="start">Start Task</button>`;
         } else if (task.status === 'started') {
-            taskEl.innerHTML = `
-                ${taskHTML}
+            statusBadge = `<span class="status-badge" style="background-color: #f0ad4e;">In Progress</span>`;
+            taskActions = `
                 <div class="task-submission">
-                    <a href="${task.link}" target="_blank">Go to Task Link</a>
+                    <a href="${task.link}" target="_blank">Go to Task Link &rarr;</a>
                     <textarea data-task-id="${task.id}" placeholder="Paste the link to your comment/review here as proof."></textarea>
                     <button data-task-id="${task.id}" data-action="finish">Submit for Review</button>
                 </div>
             `;
         } else if (task.status === 'pending') {
-            taskHTML += `<span class="status-badge status-pending">Pending Review</span>`;
+            statusBadge = `<span class="status-badge status-pending">Pending Review</span>`;
+            taskActions = `<p><em>Your submission is awaiting admin approval.</em></p>`;
         }
 
-        // Only set innerHTML if it wasn't already set for the 'started' case
-        if (task.status !== 'started') taskEl.innerHTML = taskHTML;
+        taskEl.innerHTML = `
+            <div class="task-info">
+                <div class="task-header">
+                    <h4>${task.type}</h4>
+                    ${statusBadge}
+                </div>
+                <div class="task-body">
+                    <p>${task.description}</p>
+                    <p><strong>Instructions:</strong> ${task.instructions}</p>
+                </div>
+                <div class="task-footer">
+                    ${taskActions}
+                </div>
+            </div>
+        `;
 
         taskList.appendChild(taskEl);
     });
@@ -183,6 +193,11 @@ function renderTasks() {
 function renderMarketplaceTasks() {
     marketplaceTaskList.innerHTML = '';
     const userTaskIds = appState.tasks.map(t => t.id);
+
+    if (database.marketplaceTasks.length === 0) {
+        marketplaceTaskList.innerHTML = '<p>No new tasks are available in the marketplace right now. The admin can generate more.</p>';
+        return;
+    }
 
     database.marketplaceTasks.forEach(task => {
         // Don't show tasks the user has already reserved
@@ -194,17 +209,15 @@ function renderMarketplaceTasks() {
         taskEl.className = 'task';
         taskEl.innerHTML = `
             <div class="task-info">
-                <strong>${task.type}:</strong> ${task.description}<br>
-                <em>Instructions: ${task.instructions}</em>
+                <div class="task-header"><h4>${task.type}</h4></div>
+                <div class="task-body"><p>${task.description}</p></div>
+                <div class="task-footer">
+                    <button data-task-id="${task.id}" data-action="reserve">Reserve Task (${TASK_CREDIT_COST} Credits)</button>
+                </div>
             </div>
-            <button data-task-id="${task.id}" data-action="reserve">Reserve Task (${TASK_CREDIT_COST} Credits)</button>
         `;
         marketplaceTaskList.appendChild(taskEl);
     });
-
-    if (marketplaceTaskList.innerHTML === '') {
-        marketplaceTaskList.innerHTML = '<p>No new tasks are available in the marketplace right now. Please check back later.</p>';
-    }
 }
 
 function renderHistory() {
@@ -362,11 +375,13 @@ async function generateNewTaskFromAPI(taskType) {
     const SEARCH_ENGINE_ID = '01efd7843a7744ad0'; // Your Search Engine ID
 
     // Use random keywords to get different results each time
+    const locations = ["new york", "los angeles", "chicago", "miami", "san francisco"];
+    const randomLocation = locations[Math.floor(Math.random() * locations.length)];
     let query = '';
     if (taskType === 'YouTube Comment') {
-        query = 'inurl:youtube.com "travel vlog" "new york"';
+        query = `inurl:youtube.com "walking tour" "${randomLocation}"`;
     } else if (taskType === 'Google Review') {
-        query = 'inurl:google.com/maps "coffee shop" "miami fl"';
+        query = `inurl:google.com/maps "restaurant" "${randomLocation}"`;
     } else {
         console.error('Unsupported task type for generation');
         return null;
