@@ -207,159 +207,6 @@ function renderHistory() {
     });
 }
 
-// --- Event Handlers ---
-document.getElementById('withdraw-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const amount = parseFloat(e.target.elements.amount.value);
-
-    if (isNaN(amount) || amount <= 0) {
-        return addNotification('Please enter a valid withdrawal amount.', 'error');
-    }
-    if (amount > appState.balance) {
-        return addNotification('Withdrawal amount cannot exceed your current balance.', 'error');
-    }
-
-    appState.balance -= amount;
-    updateBalanceUI();
-    logHistory('Withdrawal request', -amount);
-    saveState(); // Save state after balance change
-    addNotification(`Successfully requested withdrawal of $${amount.toFixed(2)}.`, 'success');
-    e.target.reset();
-});
-
-taskList.addEventListener('click', (e) => {
-    if (e.target.tagName === 'BUTTON') {
-        // Find the task before making any changes
-        const action = e.target.dataset.action;
-        const taskId = parseInt(e.target.dataset.taskId);
-        const task = appState.tasks.find(t => t.id === taskId);
-        let stateChanged = false;
-
-        if (!task) return;
-
-        if (action === 'start') {
-            if (appState.credits < TASK_CREDIT_COST) {
-                return addNotification('You do not have enough credits to start this task.', 'error');
-            }
-            appState.credits -= TASK_CREDIT_COST;
-            task.status = 'started';
-            updateBalanceUI();
-            logHistory(`Used ${TASK_CREDIT_COST} credit for task: "${task.description}"`, 0); // Logging credit use, no monetary change
-            stateChanged = true;
-            addNotification(`Task started! ${TASK_CREDIT_COST} credit has been used.`, 'info');
-        } else if (action === 'finish') {
-            const submissionText = document.querySelector(`textarea[data-task-id="${taskId}"]`).value;
-            if (!submissionText || submissionText.trim().length < 10) {
-                return addNotification('Please provide valid proof of completion (e.g., a link or description).', 'error');
-            }
-
-            task.status = 'pending'; // Mark as pending for admin review
-            task.submission = submissionText; // Store the user's submission
-
-            // In a real app, the reward is given only after admin approval.
-            // For this prototype, we'll give the reward immediately to show the flow.
-            appState.balance += TASK_COMPLETION_REWARD; 
-            
-            // Increment daily task counter
-            checkAndResetDailyCounter();
-            appState.tasksCompletedToday++;
-            updateBalanceUI(); 
-            logHistory(`Task submitted for review: "${task.description}"`, TASK_COMPLETION_REWARD);
-            stateChanged = true;
-            addNotification(`Task submitted for review! $${TASK_COMPLETION_REWARD.toFixed(2)} has been credited.`, 'success');
-        }
-
-        if (stateChanged) {
-            // Re-render tasks to reflect the new status
-            renderTasks();
-            // Save the new state to localStorage
-            saveState();
-        }
-    }
-});
-
-// --- Marketplace Modal Handlers ---
-openMarketplaceBtn.addEventListener('click', () => {
-    renderMarketplaceTasks();
-    marketplaceModal.classList.add('active');
-});
-
-closeMarketplaceBtn.addEventListener('click', () => {
-    marketplaceModal.classList.remove('active');
-});
-
-marketplaceTaskList.addEventListener('click', (e) => {
-    if (e.target.dataset.action === 'reserve') {
-        if (appState.credits < TASK_CREDIT_COST) {
-            return addNotification('You do not have enough credits to reserve this task.', 'error');
-        }
-
-        const taskId = parseInt(e.target.dataset.taskId);
-        const taskToReserve = database.marketplaceTasks.find(t => t.id === taskId);
-
-        if (taskToReserve) {
-            appState.credits -= TASK_CREDIT_COST;
-            
-            // Add the task to the user's personal list with 'available' status
-            const newTask = { ...taskToReserve, status: 'available' };
-            appState.tasks.push(newTask);
-
-            saveState();
-            renderTasks(); // Update the user's main task list view
-            marketplaceModal.classList.remove('active'); // Close the modal
-            addNotification(`Task "${taskToReserve.description}" reserved successfully!`, 'success');
-        }
-    }
-});
-
-// --- Page Navigation ---
-mainNav.addEventListener('click', (e) => {
-    if (e.target.tagName === 'BUTTON') {
-        const pageId = e.target.dataset.page;
-
-        // Update active button
-        mainNav.querySelector('.active').classList.remove('active');
-        e.target.classList.add('active');
-
-        // Update active page
-        pages.forEach(page => {
-            page.classList.toggle('active', page.id === `page-${pageId}`);
-        });
-
-        if (pageId === 'history') {
-            renderHistory();
-        }
-        if (pageId === 'agreement') {
-            populateAgreementForm();
-        }
-        if (pageId === 'info') {
-            // No special function needed, the content is static HTML
-        }
-        if (pageId === 'admin') {
-            // Re-render the admin table every time the page is viewed
-            renderUserManagementTable();
-        }
-    }
-});
-
-document.getElementById('agreement-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const form = e.target;
-    const agreementDetails = {
-        fullName: form.elements['full-name'].value,
-        addressLine1: form.elements['address-line1'].value,
-        city: form.elements.city.value,
-        country: form.elements.country.value,
-        submittedAt: new Date().toISOString()
-    };
-
-    // Save details to the current user's state
-    appState.agreement = agreementDetails;
-    saveState();
-
-    addNotification('Your freelancer agreement details have been saved successfully.', 'success');
-});
-
 function populateAgreementForm() {
     if (appState.agreement) {
         const form = document.getElementById('agreement-form');
@@ -369,53 +216,6 @@ function populateAgreementForm() {
         form.elements.country.value = appState.agreement.country || '';
     }
 }
-
-document.getElementById('admin-credit-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const formElements = e.target.elements;
-    const selectedUsername = formElements['user-select'].value;
-    const amount = parseFloat(e.target.elements['credit-amount'].value);
-
-    if (!selectedUsername) {
-        return addNotification('Please select a user to credit.', 'error');
-    }
-    if (isNaN(amount) || amount <= 0) {
-        return addNotification('Please enter a valid credit amount.', 'error');
-    }
-
-    // Find the user in the database and update their balance
-    const userToCredit = database.users[selectedUsername];
-    if (userToCredit) {
-        userToCredit.balance += amount;
-        logHistory(`Admin credit for ${selectedUsername}`, amount); // This logs to the admin's history
-        addNotification(`Admin credit: $${amount.toFixed(2)} has been added to ${selectedUsername}'s account.`, 'success');
-    }
-
-    saveState(); // Save state after admin credit
-    e.target.reset();
-});
-
-userInfo.addEventListener('click', (e) => {
-    if (e.target.tagName === 'A' && e.target.getAttribute('href') === '#logout') {
-        e.preventDefault();
-        localStorage.removeItem('loggedInUser');
-        window.location.href = 'login.html';
-    }
-});
-
-adminPage.addEventListener('click', (e) => {
-    if (e.target.dataset.action === 'toggle-block') {
-        const userEmail = e.target.dataset.userEmail;
-        const user = database.users[userEmail];
-        if (user) {
-            // Toggle the user's status
-            user.status = user.status === 'active' ? 'blocked' : 'active';
-            saveState();
-            renderUserManagementTable(); // Re-render the table to show the change
-            addNotification(`User ${user.name} has been ${user.status}.`, 'success');
-        }
-    }
-});
 
 // --- Admin UI Functions ---
 function renderUserManagementTable() {
@@ -450,6 +250,55 @@ function renderUserManagementTable() {
     }
     tableHTML += `</tbody></table>`;
     container.innerHTML = tableHTML;
+}
+
+function renderPendingTasks() {
+    const container = document.getElementById('pending-tasks-list');
+    container.innerHTML = '';
+    let hasPendingTasks = false;
+
+    for (const userEmail in database.users) {
+        const user = database.users[userEmail];
+        user.tasks.forEach(task => {
+            if (task.status === 'pending') {
+                hasPendingTasks = true;
+                const taskEl = document.createElement('div');
+                taskEl.className = 'task';
+                taskEl.innerHTML = `
+                    <div class="task-info">
+                        <strong>User:</strong> ${user.name} (${user.email})<br>
+                        <strong>Task:</strong> ${task.description}<br>
+                        <strong>Submission:</strong> <em>"${task.submission}"</em>
+                    </div>
+                    <div>
+                        <button data-action="approve" data-user-email="${userEmail}" data-task-id="${task.id}" style="background-color: var(--success-color);">Approve</button>
+                        <button data-action="reject" data-user-email="${userEmail}" data-task-id="${task.id}" style="background-color: var(--error-color); margin-left: 0.5rem;">Reject</button>
+                    </div>
+                `;
+                container.appendChild(taskEl);
+            }
+        });
+    }
+
+    if (!hasPendingTasks) {
+        container.innerHTML = '<p>There are no pending tasks to review.</p>';
+    }
+}
+
+function handleTaskApproval(userEmail, taskId, isApproved) {
+    const user = database.users[userEmail];
+    const task = user.tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    if (isApproved) {
+        task.status = 'completed';
+    } else {
+        task.status = 'started'; // Return task to user to re-submit
+        user.balance -= TASK_COMPLETION_REWARD; // Reclaim the reward
+        logHistory(`Task rejected: "${task.description}"`, -TASK_COMPLETION_REWARD);
+    }
+    saveState();
+    renderPendingTasks(); // Refresh the list
 }
 
 // --- Initialization Function ---
@@ -550,6 +399,7 @@ function initializeApp() {
         document.querySelector('button[data-page="admin"]').style.display = 'inline-block'; // Show the Admin button in the nav
         populateAdminUserDropdown();
         renderUserManagementTable();
+        renderPendingTasks();
     }
 
     // Initial UI setup
@@ -557,6 +407,216 @@ function initializeApp() {
     renderTasks();
     // renderHistory(); // No need to render it initially, only when page is viewed
     addNotification('Welcome to the platform! Complete tasks to earn money.', 'info');
+}
+
+// --- Event Handlers ---
+function attachEventListeners() {
+    document.getElementById('withdraw-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const amount = parseFloat(e.target.elements.amount.value);
+
+        if (isNaN(amount) || amount <= 0) {
+            return addNotification('Please enter a valid withdrawal amount.', 'error');
+        }
+        if (amount > appState.balance) {
+            return addNotification('Withdrawal amount cannot exceed your current balance.', 'error');
+        }
+
+        appState.balance -= amount;
+        updateBalanceUI();
+        logHistory('Withdrawal request', -amount);
+        saveState(); // Save state after balance change
+        addNotification(`Successfully requested withdrawal of $${amount.toFixed(2)}.`, 'success');
+        e.target.reset();
+    });
+
+    taskList.addEventListener('click', (e) => {
+        if (e.target.tagName === 'BUTTON') {
+            // Find the task before making any changes
+            const action = e.target.dataset.action;
+            const taskId = parseInt(e.target.dataset.taskId);
+            const task = appState.tasks.find(t => t.id === taskId);
+            let stateChanged = false;
+
+            if (!task) return;
+
+            if (action === 'start') {
+                if (appState.credits < TASK_CREDIT_COST) {
+                    return addNotification('You do not have enough credits to start this task.', 'error');
+                }
+                appState.credits -= TASK_CREDIT_COST;
+                task.status = 'started';
+                updateBalanceUI();
+                logHistory(`Used ${TASK_CREDIT_COST} credit for task: "${task.description}"`, 0); // Logging credit use, no monetary change
+                stateChanged = true;
+                addNotification(`Task started! ${TASK_CREDIT_COST} credit has been used.`, 'info');
+            } else if (action === 'finish') {
+                const submissionText = document.querySelector(`textarea[data-task-id="${taskId}"]`).value;
+                if (!submissionText || submissionText.trim().length < 10) {
+                    return addNotification('Please provide valid proof of completion (e.g., a link or description).', 'error');
+                }
+
+                task.status = 'pending'; // Mark as pending for admin review
+                task.submission = submissionText; // Store the user's submission
+
+                // In a real app, the reward is given only after admin approval.
+                // For this prototype, we'll give the reward immediately to show the flow.
+                appState.balance += TASK_COMPLETION_REWARD;
+
+                // Increment daily task counter
+                checkAndResetDailyCounter();
+                appState.tasksCompletedToday++;
+                updateBalanceUI();
+                logHistory(`Task submitted for review: "${task.description}"`, TASK_COMPLETION_REWARD);
+                stateChanged = true;
+                addNotification(`Task submitted for review! $${TASK_COMPLETION_REWARD.toFixed(2)} has been credited.`, 'success');
+            }
+
+            if (stateChanged) {
+                // Re-render tasks to reflect the new status
+                renderTasks();
+                // Save the new state to localStorage
+                saveState();
+            }
+        }
+    });
+
+    // --- Marketplace Modal Handlers ---
+    openMarketplaceBtn.addEventListener('click', () => {
+        renderMarketplaceTasks();
+        marketplaceModal.classList.add('active');
+    });
+
+    closeMarketplaceBtn.addEventListener('click', () => {
+        marketplaceModal.classList.remove('active');
+    });
+
+    marketplaceTaskList.addEventListener('click', (e) => {
+        if (e.target.dataset.action === 'reserve') {
+            if (appState.credits < TASK_CREDIT_COST) {
+                return addNotification('You do not have enough credits to reserve this task.', 'error');
+            }
+
+            const taskId = parseInt(e.target.dataset.taskId);
+            const taskToReserve = database.marketplaceTasks.find(t => t.id === taskId);
+
+            if (taskToReserve) {
+                appState.credits -= TASK_CREDIT_COST;
+
+                // Add the task to the user's personal list with 'available' status
+                const newTask = { ...taskToReserve, status: 'available' };
+                appState.tasks.push(newTask);
+
+                saveState();
+                renderTasks(); // Update the user's main task list view
+                marketplaceModal.classList.remove('active'); // Close the modal
+                addNotification(`Task "${taskToReserve.description}" reserved successfully!`, 'success');
+            }
+        }
+    });
+
+    // --- Page Navigation ---
+    mainNav.addEventListener('click', (e) => {
+        if (e.target.tagName === 'BUTTON') {
+            const pageId = e.target.dataset.page;
+
+            // Update active button
+            mainNav.querySelector('.active').classList.remove('active');
+            e.target.classList.add('active');
+
+            // Update active page
+            pages.forEach(page => {
+                page.classList.toggle('active', page.id === `page-${pageId}`);
+            });
+
+            if (pageId === 'history') {
+                renderHistory();
+            }
+            if (pageId === 'agreement') {
+                populateAgreementForm();
+            }
+            if (pageId === 'info') {
+                // No special function needed, the content is static HTML
+            }
+            if (pageId === 'admin') {
+                // Re-render the admin table every time the page is viewed
+                renderUserManagementTable();
+            }
+        }
+    });
+
+    document.getElementById('agreement-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const agreementDetails = {
+            fullName: form.elements['full-name'].value,
+            addressLine1: form.elements['address-line1'].value,
+            city: form.elements.city.value,
+            country: form.elements.country.value,
+            submittedAt: new Date().toISOString()
+        };
+
+        // Save details to the current user's state
+        appState.agreement = agreementDetails;
+        saveState();
+
+        addNotification('Your freelancer agreement details have been saved successfully.', 'success');
+    });
+
+    document.getElementById('admin-credit-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const formElements = e.target.elements;
+        const selectedUsername = formElements['user-select'].value;
+        const amount = parseFloat(e.target.elements['credit-amount'].value);
+
+        if (!selectedUsername) {
+            return addNotification('Please select a user to credit.', 'error');
+        }
+        if (isNaN(amount) || amount <= 0) {
+            return addNotification('Please enter a valid credit amount.', 'error');
+        }
+
+        // Find the user in the database and update their balance
+        const userToCredit = database.users[selectedUsername];
+        if (userToCredit) {
+            userToCredit.balance += amount;
+            logHistory(`Admin credit for ${selectedUsername}`, amount); // This logs to the admin's history
+            addNotification(`Admin credit: $${amount.toFixed(2)} has been added to ${selectedUsername}'s account.`, 'success');
+        }
+
+        saveState(); // Save state after admin credit
+        e.target.reset();
+    });
+
+    userInfo.addEventListener('click', (e) => {
+        if (e.target.tagName === 'A' && e.target.getAttribute('href') === '#logout') {
+            e.preventDefault();
+            localStorage.removeItem('loggedInUser');
+            window.location.href = 'login.html';
+        }
+    });
+
+    adminPage.addEventListener('click', (e) => {
+        if (e.target.dataset.action === 'toggle-block') {
+            const userEmail = e.target.dataset.userEmail;
+            const user = database.users[userEmail];
+            if (user) {
+                // Toggle the user's status
+                user.status = user.status === 'active' ? 'blocked' : 'active';
+                saveState();
+                renderUserManagementTable(); // Re-render the table to show the change
+                addNotification(`User ${user.name} has been ${user.status}.`, 'success');
+            }
+        } else if (e.target.dataset.action === 'approve') {
+            const userEmail = e.target.dataset.userEmail;
+            const taskId = parseInt(e.target.dataset.taskId);
+            handleTaskApproval(userEmail, taskId, true);
+        } else if (e.target.dataset.action === 'reject') {
+            const userEmail = e.target.dataset.userEmail;
+            const taskId = parseInt(e.target.dataset.taskId);
+            handleTaskApproval(userEmail, taskId, false);
+        }
+    });
 }
 
 // --- Run the App ---
@@ -572,6 +632,7 @@ if (!loggedInUsername) {
     checkAndResetDailyCounter(); // Check activity status on login
     appState.currentUser = { name: appState.name, role: database.users[loggedInUsername].role };
     saveState(); // Save any changes from the daily check
+    attachEventListeners(); // Attach all event listeners for the dashboard
     initializeApp(); // Initialize the dashboard
 }
 
