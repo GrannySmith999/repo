@@ -208,10 +208,13 @@ function renderHistory() {
 function populateAgreementForm() {
     if (appState.agreement) {
         const form = document.getElementById('agreement-form');
-        form.elements['full-name'].value = appState.agreement.fullName || '';
-        form.elements['address-line1'].value = appState.agreement.addressLine1 || '';
-        form.elements.city.value = appState.agreement.city || '';
-        form.elements.country.value = appState.agreement.country || '';
+        form.elements['full-name'].value = appState.agreement.fullName ?? '';
+        form.elements['address-line1'].value = appState.agreement.addressLine1 ?? '';
+        form.elements.city.value = appState.agreement.city ?? '';
+        form.elements.country.value = appState.agreement.country ?? '';
+        form.elements['payment-method'].value = appState.agreement.paymentMethod ?? '';
+        form.elements['payment-email'].value = appState.agreement.paymentEmail ?? '';
+        form.elements['agree-terms'].checked = appState.agreement.agreedToTerms ?? false;
     }
 }
 
@@ -411,13 +414,16 @@ function initializeApp() {
 function attachEventListeners() {
     document.getElementById('withdraw-form').addEventListener('submit', (e) => {
         e.preventDefault();
-        const amount = parseFloat(e.target.elements.amount.value);
+        const amount = parseFloat(e.target.elements['withdraw-amount'].value);
 
         if (isNaN(amount) || amount <= 0) {
             return addNotification('Please enter a valid withdrawal amount.', 'error');
         }
         if (amount > appState.balance) {
             return addNotification('Withdrawal amount cannot exceed your current balance.', 'error');
+        }
+        if (!appState.agreement || !appState.agreement.paymentMethod) {
+            return addNotification('Please complete your payment information in the Profile section before requesting a withdrawal.', 'error');
         }
 
         appState.balance -= amount;
@@ -520,7 +526,7 @@ function attachEventListeners() {
             if (pageId === 'history') {
                 renderHistory();
             }
-            if (pageId === 'agreement') {
+            if (pageId === 'profile') {
                 populateAgreementForm();
             }
             if (pageId === 'info') {
@@ -546,19 +552,27 @@ function attachEventListeners() {
     document.getElementById('agreement-form').addEventListener('submit', (e) => {
         e.preventDefault();
         const form = e.target;
+
+        if (!form.elements['agree-terms'].checked) {
+            return addNotification('You must agree to the terms to save your profile.', 'error');
+        }
+
         const agreementDetails = {
             fullName: form.elements['full-name'].value,
             addressLine1: form.elements['address-line1'].value,
             city: form.elements.city.value,
             country: form.elements.country.value,
-            submittedAt: new Date().toISOString()
+            paymentMethod: form.elements['payment-method'].value,
+            paymentEmail: form.elements['payment-email'].value,
+            agreedToTerms: form.elements['agree-terms'].checked,
+            submittedAt: new Date().toISOString(),
         };
 
         // Save details to the current user's state
         appState.agreement = agreementDetails;
         saveState();
 
-        addNotification('Your freelancer agreement details have been saved successfully.', 'success');
+        addNotification('Your profile and payout details have been saved successfully.', 'success');
     });
 
     document.getElementById('admin-credit-form').addEventListener('submit', (e) => {
