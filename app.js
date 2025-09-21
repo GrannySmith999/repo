@@ -70,7 +70,7 @@ renderTasks() {
 
     let hasInProgress = false, hasPending = false, hasRejected = false;
 
-    if (!this.appState.tasks || !Array.isArray(this.appState.tasks)) this.appState.tasks = [];
+    if (!Array.isArray(this.appState.tasks)) this.appState.tasks = [];
     
     this.appState.tasks.forEach(task => {
         const taskEl = document.createElement('div');
@@ -139,7 +139,7 @@ renderTasks() {
 renderMarketplaceTasks() {
     this.dom.marketplaceTaskList.innerHTML = '';
     const userTaskIds = this.appState.tasks ? this.appState.tasks.map(t => t.id) : [];
-    
+
     if (!this.marketplaceTasks || this.marketplaceTasks.length === 0) {
         const message = '<p>No new tasks are available in the marketplace right now. Please check back later.</p>';
         this.dom.marketplaceTaskList.innerHTML = message;
@@ -862,19 +862,18 @@ start(user) {
         }
     });
 
-    // Add a real-time listener for the current user's data
+    // Add a real-time listener for the current user's data.
+    // This listener ONLY updates the state object and the balance UI. It does NOT render pages.
     userRef.on('value', (userSnapshot) => {
-        this.appState = userSnapshot.val();
-        if (this.appState && this.dom.pageTasks.classList.contains('active')) {
-            this.renderTasks(); // Re-render personal tasks only if on the tasks page
-        }
-        if (this.appState) this.updateBalanceUI(); // Always keep balance updated
+        this.appState = userSnapshot.val() || {};
+        this.updateBalanceUI(); // Always keep balance updated
     });
 
-    // Listen for marketplace tasks and re-render the list when they change.
+    // Listen for marketplace tasks.
+    // This listener ONLY updates the state object. It does NOT render pages.
     firebase.database().ref('marketplaceTasks').on('value', (snapshot) => { 
         this.marketplaceTasks = snapshot.val() || []; // Ensure it's always an array
-        // Only re-render the marketplace if the user is currently on the tasks page.
+        // Re-render ONLY if the user is currently on the tasks page.
         if (this.dom.pageTasks.classList.contains('active')) {
             this.renderMarketplaceTasks(); 
         }
