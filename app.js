@@ -150,6 +150,8 @@ renderMarketplaceTasks() {
 
     const userTierInfo = this.getCurrentTierInfo();
 
+    const isAdmin = this.appState.role === 'admin';
+
     this.marketplaceTasks.forEach(task => {
         // Don't show tasks the user has already reserved
         if (userTaskIds.includes(task.id)) {
@@ -535,12 +537,15 @@ attachEventListeners() {
 
     // This listener is for the main tasks page container
     this.dom.pageTasks.addEventListener('click', (e) => {
-        if (e.target.tagName === 'BUTTON') {
+        const button = e.target.closest('button'); // Find the nearest button, even if the click was on an icon/text inside it
+
+        if (button) {
             // Find the task before making any changes
-            const action = e.target.dataset.action;
-            const taskId = parseInt(e.target.dataset.taskId);
+            const action = button.dataset.action;
+            const taskId = parseInt(button.dataset.taskId);
             let stateChanged = false;
-            let task = this.appState.tasks ? this.appState.tasks.find(t => t.id === taskId) : null;
+            
+            let task = action === 'reserve' ? null : (this.appState.tasks ? this.appState.tasks.find(t => t.id === taskId) : null);
 
             if (!task) return;
 
@@ -554,7 +559,7 @@ attachEventListeners() {
                 this.updateBalanceUI();
                 this.logHistory(`Used ${creditCost} credit for task: "${task.description}"`, 0); // Logging credit use, no monetary change
                 stateChanged = true;
-                this.addNotification(`Task started! ${this.TASK_CREDIT_COST} credit has been used.`, 'info');
+                this.addNotification(`Task started! ${creditCost} credit has been used.`, 'info');
             } else if (action === 'finish') {
                 const submissionText = document.querySelector(`textarea[data-task-id="${taskId}"]`).value;
                 if (!submissionText || submissionText.trim().length < 10) {
@@ -579,13 +584,13 @@ attachEventListeners() {
                 this.renderTasks();
                 // Save the new state to localStorage
                 this.saveAppState();
-            } else if (action === 'assign-to-user') {
-                const taskId = parseInt(e.target.dataset.taskId, 10);
+            }
+            if (action === 'assign-to-user') {
                 if (this.appState.role === 'admin') {
                     this.handleAssignTaskToUser(taskId);
                 }
             }
-        } else if (e.target.dataset.action === 'reserve') {
+        } else if (e.target.closest('button')?.dataset.action === 'reserve') {
             if (this.appState.tasksAssignedToday >= this.appState.dailyTaskQuota) {
                 return this.addNotification(`You have reached your daily limit of ${this.appState.dailyTaskQuota} assigned tasks.`, 'error');
             }
@@ -594,7 +599,7 @@ attachEventListeners() {
                 return this.addNotification('You do not have enough credits to reserve this task.', 'error');
             }
 
-            const taskId = parseInt(e.target.dataset.taskId);
+            const taskId = parseInt(e.target.closest('button').dataset.taskId);
             const taskToReserve = this.marketplaceTasks.find(t => t.id === taskId);
 
             if (taskToReserve) {
