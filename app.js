@@ -716,14 +716,14 @@ if (!loggedInUsername) {
     // If a user is logged in, load their data into the appState
     appState = database.users[loggedInUsername];
     // The key in the database is the email, which serves as the unique ID
-    if (appState) { // Check if the user data was successfully loaded
+    if (appState) {
         checkAndResetDailyCounter(); // Check activity status on login
         appState.currentUser = { name: appState.name, role: appState.role };
         saveState(); // Save any changes from the daily check
         attachEventListeners(); // Attach all event listeners for the dashboard
         initializeApp(); // Initialize the dashboard
     } else {
-        // If user data is corrupted or missing, log them out to be safe.
+        // If user data is corrupted or missing from the database, log them out to be safe.
         localStorage.removeItem('loggedInUser');
         window.location.href = 'login.html';
     }
