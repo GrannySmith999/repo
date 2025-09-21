@@ -197,6 +197,8 @@ function renderMarketplaceTasks() {
         return;
     }
 
+    const isAdmin = appState.currentUser.role === 'admin';
+
     database.marketplaceTasks.forEach(task => {
         // Don't show tasks in the marketplace if the user has already reserved them
         if (userTaskIds.includes(task.id)) {
@@ -680,6 +682,42 @@ function attachEventListeners() {
                 addNotification(`${user.name}'s daily task quota has been set to ${user.dailyTaskQuota}.`, 'success');
             }
         }
+    });
+
+    const autoAssignForm = document.getElementById('auto-assign-form');
+    if (autoAssignForm) autoAssignForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const amountToAssign = parseInt(e.target.elements['auto-assign-amount'].value, 10);
+
+        if (isNaN(amountToAssign) || amountToAssign <= 0) {
+            return addNotification('Please enter a valid number of tasks to assign.', 'error');
+        }
+
+        let assignedCount = 0;
+        let userCount = 0;
+
+        // Get tasks from marketplace that are not already assigned to anyone
+        const availableMarketplaceTasks = [...database.marketplaceTasks];
+
+        for (const email in database.users) {
+            const user = database.users[email];
+            if (user.role === 'user' && user.status === 'active') {
+                userCount++;
+                for (let i = 0; i < amountToAssign; i++) {
+                    if (user.tasksAssignedToday < user.dailyTaskQuota && availableMarketplaceTasks.length > 0) {
+                        const taskToAssign = availableMarketplaceTasks.shift(); // Take the first available task
+                        if (!user.tasks.some(t => t.id === taskToAssign.id)) {
+                            user.tasks.push({ ...taskToAssign, status: 'available' });
+                            user.tasksAssignedToday++;
+                            assignedCount++;
+                        }
+                    }
+                }
+            }
+        }
+        saveState();
+        renderTasks(); // Refresh view for current user if they were affected
+        addNotification(`Assigned a total of ${assignedCount} tasks to ${userCount} active users.`, 'success');
     });
 
     // Combined listener for header links (Logout and Profile)
