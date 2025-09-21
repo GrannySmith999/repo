@@ -263,31 +263,14 @@
         </div>
     </main>
 
-    <!-- Link to the external JavaScript file -->
-    <!-- The 'defer' attribute ensures the script runs after the HTML document has been parsed. -->
-
     <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js" defer></script>
+    <!-- The `onload` attribute is the key to this fix. It ensures initialization happens only after the library is loaded. -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js" defer onload="initializeFirebase()"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js" defer></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js" defer></script>
 
-    <!-- Initialize Firebase -->
-    <script defer>
-        // This must come AFTER the Firebase SDKs are loaded
-        const firebaseConfig = {
-            apiKey: "AIzaSyArtyLtVTenPgdI6n5FfuXVZlHVqXk56Fo",
-            authDomain: "review-master-app-6aeeb.firebaseapp.com",
-            databaseURL: "https://review-master-app-6aeeb-default-rtdb.firebaseio.com",
-            projectId: "review-master-app-6aeeb",
-            storageBucket: "review-master-app-6aeeb.appspot.com",
-            messagingSenderId: "610185397699",
-            appId: "1:610185397699:web:29ae6847033161c196e976"
-        };
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
-    </script>
-
+    <!-- Our initialization and application scripts -->
+    <script src="init.js" defer></script>
     <script src="app.js" defer></script>
 </body>
 
