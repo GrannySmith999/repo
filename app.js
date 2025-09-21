@@ -97,7 +97,11 @@ function loadState() {
     const savedDB = localStorage.getItem('taskAppDatabase');
     // Overwrite the default database if a saved one exists
     if (savedDB) {
-        database = JSON.parse(savedDB);
+        const loadedDatabase = JSON.parse(savedDB);
+        // Merge the loaded users with the default database structure
+        // This ensures that new properties like 'marketplaceTasks' are not lost
+        // if the saved data is from an older version.
+        database = { ...database, ...loadedDatabase };
     }
 }
 
@@ -653,6 +657,16 @@ function attachEventListeners() {
             const taskId = parseInt(e.target.dataset.taskId);
             handleTaskApproval(userEmail, taskId, false);
         }
+    });
+
+    // --- Marketplace Modal Handlers ---
+    openMarketplaceBtn.addEventListener('click', () => {
+        renderMarketplaceTasks();
+        marketplaceModal.classList.add('active');
+    });
+
+    closeMarketplaceBtn.addEventListener('click', () => {
+        marketplaceModal.classList.remove('active');
     });
 
     const generateTasksBtn = document.getElementById('generate-tasks-btn');
