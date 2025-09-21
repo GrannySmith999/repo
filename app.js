@@ -1,5 +1,4 @@
 const ReviewMasterApp = {
-    // --- Application State & Data ---
     appState: {},
     allUsers: {},
     marketplaceTasks: [],
@@ -10,10 +9,10 @@ const ReviewMasterApp = {
     // Constants for task earnings
     TASK_CREDIT_COST: 1,
     TASK_COMPLETION_REWARD: 0.10,
-
-saveAppState() {
-    if (this.currentFirebaseUser) {
-        firebase.database().ref('users/' + this.currentFirebaseUser.uid).set(this.appState);
+    
+    saveAppState() {
+        if (this.currentFirebaseUser) {
+            firebase.database().ref('users/' + this.currentFirebaseUser.uid).set(this.appState);
     }
 },
 logHistory(description, amount) {
@@ -21,11 +20,11 @@ logHistory(description, amount) {
     this.appState.history.unshift({ description, amount, timestamp }); // Add to the beginning of the array
     if (this.appState.history.length > 50) this.appState.history.pop(); // Keep history to a reasonable size
 },
-
-// --- UI Update Functions ---
+    
+    // --- UI Update Functions ---
 updateBalanceUI() {
     if (this.dom.balanceEl) this.dom.balanceEl.innerText = `$${this.appState.balance.toFixed(2)}`;
-    if (this.dom.userInfo) this.dom.userInfo.querySelector('.credits').textContent = `Credits: ${this.appState.credits}`;
+    if (this.dom.userInfo) this.dom.userInfo.querySelector('.credits').innerHTML = `⭐ ${this.appState.credits} Credits`;
 },
 
 addNotification(message, type = 'info') { // type can be 'info', 'success', 'error'
@@ -43,51 +42,82 @@ addNotification(message, type = 'info') { // type can be 'info', 'success', 'err
 },
 
 renderTasks() {
-    this.dom.taskList.innerHTML = ''; // Clear existing tasks
-    if (!this.appState.tasks || this.appState.tasks.length === 0) {
-        this.dom.taskList.innerHTML = '<p>You have no active tasks. Find new tasks in the marketplace!</p>';
-        return;
-    }
+    // Clear all task lists
+    this.dom.inProgressTaskList.innerHTML = '';
+    this.dom.pendingTaskList.innerHTML = '';
+    this.dom.rejectedTaskList.innerHTML = '';
 
+    let hasInProgress = false, hasPending = false, hasRejected = false;
+
+    if (!this.appState.tasks) this.appState.tasks = [];
+    
     this.appState.tasks.forEach(task => {
-        if (task.status === 'completed') return; // Don't render completed tasks
-
         const taskEl = document.createElement('div');
-        taskEl.className = 'task';
+        taskEl.className = `task status-${task.status}`; // Add status-specific class
 
-        // Base task info
-        let taskHTML = `
-            <div class="task-info">
-                <strong>${task.type}:</strong> ${task.description}<br>
-                <em>Instructions: ${task.instructions}</em>
-            </div>
-        `;
+        let statusBadge = '';
+        let taskContent = '';
+        let targetList = null;
 
-        if (task.status === 'available') { // User can start the task
-            taskHTML += `<button data-task-id="${task.id}" data-action="start">Start Task (Cost: ${TASK_CREDIT_COST} Credit)</button>`;
-        } else if (task.status === 'started') { // Task is in progress, user needs to submit proof
-            taskEl.innerHTML = `
-                ${taskHTML}
+        if (task.status === 'available') {
+            statusBadge = `<span class="status-badge" style="background-color: var(--success-color);">Available</span>`;
+            taskContent = `<p>This task is ready for you to start!</p><div class="task-actions"><button data-task-id="${task.id}" data-action="start">Start Task (1 Credit)</button></div>`;
+            targetList = this.dom.inProgressTaskList; // Show available tasks in the "In Progress" section
+            hasInProgress = true;
+        } else if (task.status === 'started') {
+            statusBadge = `<span class="status-badge" style="background-color: #f0ad4e;">In Progress</span>`;
+            taskContent = `
                 <div class="task-submission">
-                    <a href="${task.link}" target="_blank">Go to Task Link</a>
+                    <p><strong>Instructions:</strong> ${task.instructions}</p>
                     <textarea data-task-id="${task.id}" placeholder="Paste the link to your comment/review here as proof."></textarea>
-                    <button data-task-id="${task.id}" data-action="finish">Submit for Review</button>
+                    <div class="task-actions">
+                        <a href="${task.link}" target="_blank" class="link-button" style="text-decoration: none; padding: 0.8rem 1.5rem; border-radius: 12px;">🔗 Go to Review Page</a>
+                        <button data-task-id="${task.id}" data-action="finish">Submit for Approval</button>
+                    </div>
                 </div>
             `;
-        } else if (task.status === 'pending') { // Task is awaiting admin approval
-            taskHTML += `<span><strong>Status:</strong> Pending Review</span>`;
+            targetList = this.dom.inProgressTaskList;
+            hasInProgress = true;
+        } else if (task.status === 'pending') {
+            statusBadge = `<span class="status-badge status-pending">Pending Review</span>`;
+            taskContent = `<p><em>Your submission is awaiting admin approval. Thank you!</em></p>`;
+            targetList = this.dom.pendingTaskList;
+            hasPending = true;
+        } else if (task.status === 'completed') {
+            statusBadge = `<span class="status-badge" style="background-color: var(--primary-color);">Approved</span>`;
+            taskContent = `<p><em>This task was approved. Great job! 🥳</em></p>`;
+            targetList = this.dom.pendingTaskList;
+            hasPending = true;
         }
 
-        // Only set innerHTML if it wasn't already set for the 'started' case
-        if (task.status !== 'started') taskEl.innerHTML = taskHTML;
-
-        this.dom.taskList.appendChild(taskEl);
+        taskEl.innerHTML = `
+            <div class="task-info">
+                <div class="task-header">
+                    <h4>${task.type}</h4>
+                    <div>${statusBadge}</div>
+                </div>
+                <div class="task-body">
+                    <p>${task.description}</p>
+                    ${taskContent}
+                </div>
+            </div>
+        `;
+        if (targetList) targetList.appendChild(taskEl);
     });
+
+    if (!hasInProgress) this.dom.inProgressTaskList.innerHTML = '<p>You have no tasks in progress. Reserve one from the marketplace!</p>';
+    if (!hasPending) this.dom.pendingTaskList.innerHTML = '<p>You have no tasks pending review or approved.</p>';
+    // Logic for rejected tasks can be added if a 'rejected' status is implemented
 },
 
 renderMarketplaceTasks() {
     this.dom.marketplaceTaskList.innerHTML = '';
     const userTaskIds = this.appState.tasks ? this.appState.tasks.map(t => t.id) : [];
+
+    if (!this.marketplaceTasks || this.marketplaceTasks.length === 0) {
+        this.dom.marketplaceTaskList.innerHTML = '<p>No new tasks are available right now. The admin can generate more.</p>';
+        return;
+    }
 
     this.marketplaceTasks.forEach(task => {
         // Don't show tasks the user has already reserved
@@ -95,21 +125,28 @@ renderMarketplaceTasks() {
             return;
         }
 
+        const isAdmin = this.appState.role === 'admin';
+        const actionButton = isAdmin 
+            ? `<button data-task-id="${task.id}" data-action="assign-to-user" class="assign-btn">Assign to User</button>`
+            : `<button data-task-id="${task.id}" data-action="reserve">Reserve Task (1 Credit)</button>`;
+
         const taskEl = document.createElement('div');
-        taskEl.className = 'task';
+        taskEl.className = 'task task-marketplace';
         taskEl.innerHTML = `
             <div class="task-info">
-                <strong>${task.type}:</strong> ${task.description}<br>
-                <em>Instructions: ${task.instructions}</em>
+                <div class="task-header">
+                    <h4>${task.type}</h4>
+                </div>
+                <div class="task-body">
+                    <p>${task.description}</p>
+                    <div class="task-actions">
+                        ${actionButton}
+                    </div>
+                </div>
             </div>
-            <button data-task-id="${task.id}" data-action="reserve">Reserve Task (1 Credit)</button>
         `;
         this.dom.marketplaceTaskList.appendChild(taskEl);
     });
-
-    if (this.dom.marketplaceTaskList.innerHTML === '') {
-        this.dom.marketplaceTaskList.innerHTML = '<p>No new tasks are available in the marketplace right now. Please check back later.</p>';
-    }
 },
 
 renderHistory() {
@@ -120,9 +157,9 @@ renderHistory() {
     }
     this.appState.history.forEach(item => {
         const itemEl = document.createElement('div');
-        itemEl.className = 'task'; // Re-using 'task' style for consistency
+        itemEl.className = 'history-item';
         const amountClass = item.amount >= 0 ? 'success' : 'error';
-        itemEl.innerHTML = `<span>${item.description}</span> <strong class="${amountClass}">$${item.amount.toFixed(2)}</strong>`;
+        itemEl.innerHTML = `<div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #4a4a68;"><span>${item.description}</span> <strong class="${amountClass}">$${item.amount.toFixed(2)}</strong></div>`;
         this.dom.historyList.appendChild(itemEl);
     });
 },
@@ -151,6 +188,7 @@ renderUserManagementTable() {
                 <tr>
                     <th>Username</th>
                     <th>Email</th>
+                    <th>Daily Quota</th>
                     <th>Balance</th>
                     <th>Status</th>
                     <th>Action</th>
@@ -167,6 +205,10 @@ renderUserManagementTable() {
             <tr>
                 <td>${user.name}</td>
                 <td>${user.email}</td>
+                <td>
+                    <input type="number" value="${user.dailyTaskQuota || 5}" min="5" max="100" style="width: 60px; padding: 0.2rem;" data-user-uid="${uid}" class="quota-input">
+                    <button data-action="set-quota" data-user-uid="${uid}">Set</button>
+                </td>
                 <td>$${user.balance.toFixed(2)}</td>
                 <td class="${statusClass}">${user.status.charAt(0).toUpperCase() + user.status.slice(1)}</td>
                 <td><button data-action="toggle-block" data-user-uid="${uid}">${buttonText}</button></td>
@@ -184,7 +226,7 @@ renderPendingTasks() {
 
     for (const uid in this.allUsers) {
         const user = this.allUsers[uid];
-        if (user.tasks) user.tasks.forEach(task => {
+        if (user.tasks && Array.isArray(user.tasks)) user.tasks.forEach(task => {
             if (task.status === 'pending') {
                 hasPendingTasks = true;
                 const taskEl = document.createElement('div');
@@ -222,10 +264,30 @@ handleTaskApproval(userEmail, taskId, isApproved) {
         user.balance += this.TASK_COMPLETION_REWARD;
     } else {
         task.status = 'started'; // Return task to user to re-submit
-        this.logHistory(`Task rejected: "${task.description}"`, -this.TASK_COMPLETION_REWARD);
+        // We don't reclaim the money on rejection in this model
     }
     userRef.set(user); // Save the updated user object back to Firebase
     this.renderPendingTasks(); // Refresh the list
+},
+
+handleAssignTaskToUser(taskId) {
+    const userEmail = prompt("Enter the email of the user to assign this task to:");
+    if (!userEmail) return;
+
+    const targetUserEntry = Object.entries(this.allUsers).find(([uid, user]) => user.email === userEmail.toLowerCase());
+    if (!targetUserEntry) {
+        return this.addNotification("User not found. Please enter a valid user email.", "error");
+    }
+
+    const [targetUid, targetUser] = targetUserEntry;
+    const taskToAssign = this.marketplaceTasks.find(t => t.id === taskId);
+
+    if (taskToAssign) {
+        const newTask = { ...taskToAssign, status: 'available' };
+        const userTasksRef = firebase.database().ref(`users/${targetUid}/tasks`);
+        userTasksRef.push(newTask); // Use push to add to a list in Firebase
+        this.addNotification(`Task "${taskToAssign.description}" assigned to ${targetUser.name}.`, 'success');
+    }
 },
 
 // --- Initialization Function ---
@@ -318,11 +380,11 @@ checkAndResetDailyCounter() {
 
 initializeApp() {
     // Set user info
-    this.dom.userInfo.querySelector('span').textContent = `Welcome, ${this.appState.name}!`;
+    this.dom.userInfo.querySelector('span:first-child').textContent = `Welcome, ${this.appState.name}!`;
 
     // Check role and show admin panel if applicable
     if (this.appState.role === 'admin') {
-        this.dom.userInfo.querySelector('span').textContent += ' (Admin)'; // Add admin tag to welcome message
+        this.dom.userInfo.querySelector('span:first-child').textContent += ' (Admin)'; // Add admin tag to welcome message
         this.dom.mainNav.querySelector('button[data-page="admin"]').style.display = 'inline-block'; // Show the Admin button in the nav
         this.populateAdminUserDropdown();
         this.renderUserManagementTable();
@@ -332,6 +394,7 @@ initializeApp() {
     // Initial UI setup
     this.updateBalanceUI();
     this.renderTasks();
+    this.renderMarketplaceTasks();
     // renderHistory(); // No need to render it initially, only when page is viewed
     this.addNotification('Welcome to the platform! Complete tasks to earn money.', 'info');
 },
@@ -362,13 +425,13 @@ attachEventListeners() {
     });
 
     // This listener is for the main tasks page container
-    document.getElementById('page-tasks').addEventListener('click', (e) => {
+    this.dom.pageTasks.addEventListener('click', (e) => {
         if (e.target.tagName === 'BUTTON') {
             // Find the task before making any changes
             const action = e.target.dataset.action;
             const taskId = parseInt(e.target.dataset.taskId);
-            const task = appState.tasks.find(t => t.id === taskId);
             let stateChanged = false;
+            let task = this.appState.tasks ? this.appState.tasks.find(t => t.id === taskId) : null;
 
             if (!task) return;
 
@@ -407,6 +470,28 @@ attachEventListeners() {
                 // Save the new state to localStorage
                 this.saveAppState();
             }
+        } else if (e.target.dataset.action === 'reserve') {
+            if (this.appState.tasksAssignedToday >= this.appState.dailyTaskQuota) {
+                return this.addNotification(`You have reached your daily limit of ${this.appState.dailyTaskQuota} assigned tasks.`, 'error');
+            }
+            if (this.appState.credits < this.TASK_CREDIT_COST) {
+                return this.addNotification('You do not have enough credits to reserve this task.', 'error');
+            }
+
+            const taskId = parseInt(e.target.dataset.taskId);
+            const taskToReserve = this.marketplaceTasks.find(t => t.id === taskId);
+
+            if (taskToReserve) {
+                this.appState.credits -= this.TASK_CREDIT_COST;
+                this.appState.tasksAssignedToday = (this.appState.tasksAssignedToday || 0) + 1;
+
+                const newTask = { ...taskToReserve, status: 'available' };
+                if (!this.appState.tasks) this.appState.tasks = [];
+                this.appState.tasks.push(newTask);
+
+                this.saveAppState();
+                this.addNotification(`Task "${taskToReserve.description}" reserved successfully!`, 'success');
+            }
         }
     });
 
@@ -416,7 +501,7 @@ attachEventListeners() {
             const pageId = e.target.dataset.page;
 
             // Update active button
-            mainNav.querySelector('.active').classList.remove('active');
+            this.dom.mainNav.querySelector('.active').classList.remove('active');
             e.target.classList.add('active');
 
             // Update active page
@@ -527,6 +612,15 @@ attachEventListeners() {
             const userUid = e.target.dataset.userUid;
             const taskId = parseInt(e.target.dataset.taskId);
             this.handleTaskApproval(userUid, taskId, false);
+        } else if (e.target.dataset.action === 'set-quota') {
+            const userUid = e.target.dataset.userUid;
+            const user = this.allUsers[userUid];
+            const input = this.dom.adminPage.querySelector(`.quota-input[data-user-uid="${userUid}"]`);
+            if (user && input) {
+                user.dailyTaskQuota = parseInt(input.value, 10);
+                firebase.database().ref(`users/${userUid}/dailyTaskQuota`).set(user.dailyTaskQuota);
+                this.addNotification(`${user.name}'s daily task quota has been set to ${user.dailyTaskQuota}.`, 'success');
+            }
         }
     });
 },
@@ -539,13 +633,9 @@ start(user) {
     userRef.on('value', (snapshot) => {
         this.appState = snapshot.val();
         if (this.appState) {
-            if (!this.listenersAttached) {
-                this.cacheDom();
-                this.attachEventListeners();
-                this.listenersAttached = true;
-            }
             this.checkAndResetDailyCounter();
             this.initializeApp();
+            this.renderTasks(); // Re-render tasks whenever user data changes
         }
     });
 
@@ -558,14 +648,16 @@ cacheDom() {
     this.dom.userInfo = document.getElementById('user-info');
     this.dom.balanceEl = document.getElementById('current-balance');
     this.dom.toastContainer = document.getElementById('toast-container');
-    this.dom.taskList = document.getElementById('task-list');
+    this.dom.pageTasks = document.getElementById('page-tasks');
+    this.dom.inProgressTaskList = document.getElementById('in-progress-task-list');
+    this.dom.pendingTaskList = document.getElementById('pending-task-list');
+    this.dom.rejectedTaskList = document.getElementById('rejected-task-list');
     this.dom.historyList = document.getElementById('history-list');
     this.dom.mainNav = document.getElementById('main-nav');
     this.dom.adminPage = document.getElementById('page-admin');
     this.dom.marketplaceTaskList = document.getElementById('marketplace-task-list');
     this.dom.pages = document.querySelectorAll('.page');
     this.dom.withdrawForm = document.getElementById('withdraw-form');
-    // The profile form is the same as the agreement form
     this.dom.profileForm = document.getElementById('profile-form');
     this.dom.adminCreditForm = document.getElementById('admin-credit-form');
 }
@@ -573,8 +665,16 @@ cacheDom() {
 
 // --- Run the App ---
 document.addEventListener('DOMContentLoaded', () => {
+    // This flag ensures event listeners are only attached once.
+    let appInitialized = false;
+
     firebase.auth().onAuthStateChanged(user => {
         if (user) {
+            if (!appInitialized) {
+                ReviewMasterApp.cacheDom();
+                ReviewMasterApp.attachEventListeners();
+                appInitialized = true;
+            }
             ReviewMasterApp.start(user);
         } else {
             // User is signed out.
@@ -582,6 +682,3 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
-
-// To reset the state for testing, you can open the browser console and run:
-// localStorage.removeItem('taskAppDatabase'); location.reload();
