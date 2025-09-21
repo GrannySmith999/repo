@@ -113,7 +113,7 @@ function logHistory(description, amount) {
 // --- UI Update Functions ---
 function updateBalanceUI() {
     if (balanceEl) balanceEl.innerText = `$${appState.balance.toFixed(2)}`;
-    userInfo.querySelector('.credits').textContent = `Credits: ${appState.credits}`;
+    userInfo.querySelector('.credits').innerHTML = `⭐ ${appState.credits} Credits`;
 }
 
 function addNotification(message, type = 'info') { // type can be 'info', 'success', 'error'
@@ -326,6 +326,8 @@ function handleTaskApproval(userEmail, taskId, isApproved) {
 
     if (isApproved) {
         task.status = 'completed';
+        user.balance += TASK_COMPLETION_REWARD; // Pay the user upon approval
+        logHistory(`Task approved: "${task.description}"`, TASK_COMPLETION_REWARD);
     } else {
         task.status = 'started'; // Return task to user to re-submit
         user.balance -= TASK_COMPLETION_REWARD; // Reclaim the reward
@@ -502,17 +504,12 @@ function attachEventListeners() {
                 task.status = 'pending'; // Mark as pending for admin review
                 task.submission = submissionText; // Store the user's submission
 
-                // In a real app, the reward is given only after admin approval.
-                // For this prototype, we'll give the reward immediately to show the flow.
-                appState.balance += TASK_COMPLETION_REWARD;
-
                 // Increment daily task counter
                 checkAndResetDailyCounter();
                 appState.tasksCompletedToday++;
                 updateBalanceUI();
-                logHistory(`Task submitted for review: "${task.description}"`, TASK_COMPLETION_REWARD);
                 stateChanged = true;
-                addNotification(`Task submitted for review! $${TASK_COMPLETION_REWARD.toFixed(2)} has been credited.`, 'success');
+                addNotification(`Task submitted for review!`, 'success');
             }
 
             if (stateChanged) {
