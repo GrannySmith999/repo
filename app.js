@@ -96,10 +96,10 @@ function loadState() {
     if (savedDB) {
         const loadedDatabase = JSON.parse(savedDB);
         // Only update the 'users' property from the loaded data.
-        // This ensures the default admin and marketplace tasks are not lost
+        // This ensures the default admin account is not lost
         // if the saved data is from an older version or doesn't contain them.
         if (loadedDatabase.users) {
-            database.users = { ...database.users, ...loadedDatabase.users };
+            Object.assign(database.users, loadedDatabase.users);
         }
     }
 }
