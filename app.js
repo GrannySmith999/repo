@@ -433,6 +433,7 @@ initializeApp() {
         this.dom.userInfo.querySelector('span:first-child').textContent += ' (Admin)'; // Add admin tag to welcome message
         this.dom.mainNav.querySelector('button[data-page="admin"]').style.display = 'inline-block'; // Show the Admin button in the nav
         this.renderPendingTasks();
+        this.renderUserManagementTable();
     }
 
     // Initial UI setup
@@ -743,21 +744,25 @@ start(user) {
     userRef.once('value').then((snapshot) => {
         this.appState = snapshot.val();
         if (this.appState) {
-            this.checkAndResetDailyCounter();
-            this.initializeApp();
-
-            // If the user is an admin, set up a listener for all users and render admin components
+            // Set up listeners that depend on the user's role.
             if (this.appState.role === 'admin') {
+                // For admins, listen to changes on ALL users in real-time.
                 firebase.database().ref('users').on('value', (userSnapshot) => {
                     this.allUsers = userSnapshot.val() || {};
+                    // Re-render admin components whenever user data changes.
                     this.renderUserManagementTable();
+                    this.renderPendingTasks();
                     this.populateAdminUserDropdown();
                 });
             }
+
+            this.checkAndResetDailyCounter();
+            this.initializeApp();
         }
     });
 
-    firebase.database().ref('marketplaceTasks').on('value', (snapshot) => { this.marketplaceTasks = snapshot.val() || []; });
+    // Listen for marketplace tasks and re-render the list when they change.
+    firebase.database().ref('marketplaceTasks').on('value', (snapshot) => { this.marketplaceTasks = snapshot.val() || []; this.renderMarketplaceTasks(); });
 },
 
 cacheDom() {
