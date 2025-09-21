@@ -1,22 +1,11 @@
-// --- Application State & Data ---
-// The appState will now hold all necessary data fetched from Firebase
-let appState = {}; // This will hold the state for the CURRENTLY LOGGED IN user.
-let allUsers = {}; // This will hold all user data for the admin panel
-let marketplaceTasks = []; // This will hold the global pool of tasks
-
-// --- DOM Element Selectors ---
-const userInfo = document.getElementById('user-info');
-const balanceEl = document.getElementById('current-balance');
-const toastContainer = document.getElementById('toast-container');
-const taskList = document.getElementById('task-list');
-const historyList = document.getElementById('history-list');
-const mainNav = document.getElementById('main-nav');
-const adminPage = document.getElementById('page-admin');
-const marketplaceModal = document.getElementById('marketplace-modal');
-const openMarketplaceBtn = document.getElementById('open-marketplace-btn');
-const closeMarketplaceBtn = document.getElementById('close-marketplace-btn');
-const marketplaceTaskList = document.getElementById('marketplace-task-list');
-const pages = document.querySelectorAll('.page');
+const ReviewMasterApp = {
+    // --- Application State & Data ---
+    appState: {},
+    allUsers: {},
+    marketplaceTasks: [],
+    currentFirebaseUser: null,
+    listenersAttached: false,
+    dom: {}, // To hold DOM element references
 
 // Constants for task earnings
 const TASK_CREDIT_COST = 1;
@@ -24,25 +13,24 @@ const TASK_COMPLETION_REWARD = 0.10;
 let currentFirebaseUser = null; // Will hold the Firebase auth user object
 
 // --- State Management Functions (with Firebase) ---
-function saveAppState() {
-    if (currentFirebaseUser) {
-        firebase.database().ref('users/' + currentFirebaseUser.uid).set(appState);
+saveAppState() {
+    if (this.currentFirebaseUser) {
+        firebase.database().ref('users/' + this.currentFirebaseUser.uid).set(this.appState);
     }
-}
-function logHistory(description, amount) {
+},
+logHistory(description, amount) {
     const timestamp = new Date().toISOString();
-    appState.history.unshift({ description, amount, timestamp }); // Add to the beginning of the array
-    if (appState.history.length > 50) appState.history.pop(); // Keep history to a reasonable size
-}
+    this.appState.history.unshift({ description, amount, timestamp }); // Add to the beginning of the array
+    if (this.appState.history.length > 50) this.appState.history.pop(); // Keep history to a reasonable size
+},
 
 // --- UI Update Functions ---
-function updateBalanceUI() {
-    balanceEl.innerText = `$${appState.balance.toFixed(2)}`;
-    userInfo.querySelector('.credits').textContent = `Credits: ${appState.credits}`;
-}
+updateBalanceUI() {
+    if (this.dom.balanceEl) this.dom.balanceEl.innerText = `$${this.appState.balance.toFixed(2)}`;
+    if (this.dom.userInfo) this.dom.userInfo.querySelector('.credits').textContent = `Credits: ${this.appState.credits}`;
+},
 
-function addNotification(message, type = 'info') { // type can be 'info', 'success', 'error'
-    const newNotification = document.createElement('div');
+addNotification(message, type = 'info') { // type can be 'info', 'success', 'error'
     toast.className = `toast notification ${type}`;
     const title = type.charAt(0).toUpperCase() + type.slice(1);
     toast.innerHTML = `<strong>${title}:</strong> ${message}`;
@@ -54,16 +42,16 @@ function addNotification(message, type = 'info') { // type can be 'info', 'succe
         toast.classList.remove('show');
         toast.addEventListener('transitionend', () => toast.remove());
     }, 5000);
-}
+},
 
-function renderTasks() {
-    taskList.innerHTML = ''; // Clear existing tasks
-    if (appState.tasks.length === 0) {
-        taskList.innerHTML = '<p>You have no active tasks. Find new tasks in the marketplace!</p>';
+renderTasks() {
+    this.dom.taskList.innerHTML = ''; // Clear existing tasks
+    if (!this.appState.tasks || this.appState.tasks.length === 0) {
+        this.dom.taskList.innerHTML = '<p>You have no active tasks. Find new tasks in the marketplace!</p>';
         return;
     }
 
-    appState.tasks.forEach(task => {
+    this.appState.tasks.forEach(task => {
         if (task.status === 'completed') return; // Don't render completed tasks
 
         const taskEl = document.createElement('div');
@@ -95,15 +83,15 @@ function renderTasks() {
         // Only set innerHTML if it wasn't already set for the 'started' case
         if (task.status !== 'started') taskEl.innerHTML = taskHTML;
 
-        taskList.appendChild(taskEl);
+        this.dom.taskList.appendChild(taskEl);
     });
-}
+},
 
-function renderMarketplaceTasks() {
-    marketplaceTaskList.innerHTML = '';
-    const userTaskIds = appState.tasks.map(t => t.id);
+renderMarketplaceTasks() {
+    this.dom.marketplaceTaskList.innerHTML = '';
+    const userTaskIds = this.appState.tasks ? this.appState.tasks.map(t => t.id) : [];
 
-    marketplaceTasks.forEach(task => {
+    this.marketplaceTasks.forEach(task => {
         // Don't show tasks the user has already reserved
         if (userTaskIds.includes(task.id)) {
             return;
@@ -118,46 +106,46 @@ function renderMarketplaceTasks() {
             </div>
             <button data-task-id="${task.id}" data-action="reserve">Reserve Task (1 Credit)</button>
         `;
-        marketplaceTaskList.appendChild(taskEl);
+        this.dom.marketplaceTaskList.appendChild(taskEl);
     });
 
-    if (marketplaceTaskList.innerHTML === '') {
-        marketplaceTaskList.innerHTML = '<p>No new tasks are available in the marketplace right now. Please check back later.</p>';
+    if (this.dom.marketplaceTaskList.innerHTML === '') {
+        this.dom.marketplaceTaskList.innerHTML = '<p>No new tasks are available in the marketplace right now. Please check back later.</p>';
     }
-}
+},
 
-function renderHistory() {
-    historyList.innerHTML = ''; // Clear existing list
-    if (appState.history.length === 0) {
-        historyList.innerHTML = '<p>No transaction history yet.</p>';
+renderHistory() {
+    this.dom.historyList.innerHTML = ''; // Clear existing list
+    if (!this.appState.history || this.appState.history.length === 0) {
+        this.dom.historyList.innerHTML = '<p>No transaction history yet.</p>';
         return;
     }
-    appState.history.forEach(item => {
+    this.appState.history.forEach(item => {
         const itemEl = document.createElement('div');
         itemEl.className = 'task'; // Re-using 'task' style for consistency
         const amountClass = item.amount >= 0 ? 'success' : 'error';
         itemEl.innerHTML = `<span>${item.description}</span> <strong class="${amountClass}">$${item.amount.toFixed(2)}</strong>`;
-        historyList.appendChild(itemEl);
+        this.dom.historyList.appendChild(itemEl);
     });
-}
+},
 
-function populateAgreementForm() {
-    if (appState.agreement) {
+populateAgreementForm() {
+    if (this.appState.agreement) {
         const form = document.getElementById('agreement-form');
-        form.elements['full-name'].value = appState.agreement.fullName ?? '';
-        form.elements['address-line1'].value = appState.agreement.addressLine1 ?? '';
-        form.elements.city.value = appState.agreement.city ?? '';
-        form.elements.country.value = appState.agreement.country ?? '';
-        form.elements['bank-name'].value = appState.agreement.bankName ?? '';
-        form.elements['account-holder-name'].value = appState.agreement.accountHolderName ?? '';
-        form.elements['account-number'].value = appState.agreement.accountNumber ?? '';
-        form.elements['routing-number'].value = appState.agreement.routingNumber ?? '';
-        form.elements['agree-terms'].checked = appState.agreement.agreedToTerms ?? false;
+        form.elements['full-name'].value = this.appState.agreement.fullName ?? '';
+        form.elements['address-line1'].value = this.appState.agreement.addressLine1 ?? '';
+        form.elements.city.value = this.appState.agreement.city ?? '';
+        form.elements.country.value = this.appState.agreement.country ?? '';
+        form.elements['bank-name'].value = this.appState.agreement.bankName ?? '';
+        form.elements['account-holder-name'].value = this.appState.agreement.accountHolderName ?? '';
+        form.elements['account-number'].value = this.appState.agreement.accountNumber ?? '';
+        form.elements['routing-number'].value = this.appState.agreement.routingNumber ?? '';
+        form.elements['agree-terms'].checked = this.appState.agreement.agreedToTerms ?? false;
     }
-}
+},
 
 // --- Admin UI Functions ---
-function renderUserManagementTable() {
+renderUserManagementTable() {
     const container = document.getElementById('user-management-table');
     let tableHTML = `
         <table class="user-table">
@@ -172,8 +160,8 @@ function renderUserManagementTable() {
             </thead>
             <tbody>
     `;
-    for (const uid in allUsers) {
-        const user = allUsers[uid];
+    for (const uid in this.allUsers) {
+        const user = this.allUsers[uid];
         if (user.role === 'admin') continue; // Don't show admin in the list
         const statusClass = user.status === 'blocked' ? 'status-blocked' : '';
         const buttonText = user.status === 'active' ? 'Block' : 'Unblock';
@@ -189,16 +177,16 @@ function renderUserManagementTable() {
     }
     tableHTML += `</tbody></table>`;
     container.innerHTML = tableHTML;
-}
+},
 
-function renderPendingTasks() {
+renderPendingTasks() {
     const container = document.getElementById('pending-tasks-list');
     container.innerHTML = '';
     let hasPendingTasks = false;
 
-    for (const uid in allUsers) {
-        const user = allUsers[uid];
-        user.tasks.forEach(task => {
+    for (const uid in this.allUsers) {
+        const user = this.allUsers[uid];
+        if (user.tasks) user.tasks.forEach(task => {
             if (task.status === 'pending') {
                 hasPendingTasks = true;
                 const taskEl = document.createElement('div');
@@ -222,28 +210,28 @@ function renderPendingTasks() {
     if (!hasPendingTasks) {
         container.innerHTML = '<p>There are no pending tasks to review.</p>';
     }
-}
+},
 
-function handleTaskApproval(userEmail, taskId, isApproved) {
+handleTaskApproval(userEmail, taskId, isApproved) {
     // This function now needs to update the user's data in Firebase
     const userRef = firebase.database().ref('users/' + userEmail); // userEmail is now the UID
-    const user = allUsers[userEmail];
+    const user = this.allUsers[userEmail];
     const task = user.tasks.find(t => t.id === taskId);
     if (!task) return;
 
     if (isApproved) {
         task.status = 'completed';
-        user.balance += TASK_COMPLETION_REWARD;
+        user.balance += this.TASK_COMPLETION_REWARD;
     } else {
         task.status = 'started'; // Return task to user to re-submit
-        logHistory(`Task rejected: "${task.description}"`, -TASK_COMPLETION_REWARD);
+        this.logHistory(`Task rejected: "${task.description}"`, -this.TASK_COMPLETION_REWARD);
     }
     userRef.set(user); // Save the updated user object back to Firebase
-    renderPendingTasks(); // Refresh the list
-}
+    this.renderPendingTasks(); // Refresh the list
+},
 
 // --- Initialization Function ---
-function populateAdminUserDropdown() {
+populateAdminUserDropdown() {
     const adminForm = document.getElementById('admin-credit-form');
     // Prevent adding duplicate dropdowns
     const existingSelect = document.getElementById('user-select');
@@ -256,8 +244,8 @@ function populateAdminUserDropdown() {
     select.name = 'user-select'; // The name attribute for the form
 
     let options = '<option value="">-- Select a User --</option>';
-    for (const uid in allUsers) {
-        const user = allUsers[uid];
+    for (const uid in this.allUsers) {
+        const user = this.allUsers[uid];
         if (user.role !== 'admin') { // Don't let admin credit themselves this way
             options += `<option value="${uid}">${user.name} (${user.email})</option>`;
         }
@@ -267,7 +255,7 @@ function populateAdminUserDropdown() {
     // Add the dropdown to the form
     const creditLabel = adminForm.querySelector('label[for="credit-amount"]');
     adminForm.insertBefore(select, creditLabel);
-}
+},
 
 /**
  * CONCEPTUAL FUNCTION: Generates a new task by calling an external API.
@@ -275,7 +263,7 @@ function populateAdminUserDropdown() {
  * @param {string} taskType - The type of task to generate (e.g., 'YouTube Comment').
  * @returns {Promise<object|null>} A new task object or null if generation fails.
  */
-async function generateNewTaskFromAPI(taskType) {
+async generateNewTaskFromAPI(taskType) {
     // In a real implementation, you would get these from a secure place.
     const API_KEY = 'PASTE_YOUR_NEW_API_KEY_HERE'; // IMPORTANT: Replace with your new, secure key
     const SEARCH_ENGINE_ID = '01efd7843a7744ad0'; // Your Search Engine ID
@@ -310,72 +298,71 @@ async function generateNewTaskFromAPI(taskType) {
         return null;
     }
     return null; // Return null if no items are found or an error occurs
-}
+},
 
-function checkAndResetDailyCounter() {
+checkAndResetDailyCounter() {
     const today = new Date().toISOString().split('T')[0]; // Get YYYY-MM-DD
 
     // If the last activity was yesterday or earlier
-    if (appState.lastActivityDate < today) {
+    if (this.appState.lastActivityDate < today) {
         // Check if the user met the quota for the last active day
-        if (appState.tasksCompletedToday < 20 && appState.role === 'user') {
-            appState.status = 'blocked';
-            addNotification(`Your account has been suspended for not meeting the daily task requirement of 20 tasks.`, 'error');
+        if (this.appState.tasksCompletedToday < 20 && this.appState.role === 'user') {
+            this.appState.status = 'blocked';
+            this.addNotification(`Your account has been suspended for not meeting the daily task requirement of 20 tasks.`, 'error');
         }
 
         // Reset the counter for the new day
-        appState.tasksCompletedToday = 0;
+        this.appState.tasksCompletedToday = 0;
     }
     // Update the last activity date to today
-    appState.lastActivityDate = today;
-}
+    this.appState.lastActivityDate = today;
+},
 
-function initializeApp() {
+initializeApp() {
     // Set user info
-    userInfo.querySelector('span').textContent = `Welcome, ${appState.name}!`;
+    this.dom.userInfo.querySelector('span').textContent = `Welcome, ${this.appState.name}!`;
 
     // Check role and show admin panel if applicable
-    if (appState.role === 'admin') {
-        userInfo.querySelector('span').textContent += ' (Admin)'; // Add admin tag to welcome message
-        document.querySelector('button[data-page="admin"]').style.display = 'inline-block'; // Show the Admin button in the nav
-        populateAdminUserDropdown();
-        renderUserManagementTable();
-        renderPendingTasks();
+    if (this.appState.role === 'admin') {
+        this.dom.userInfo.querySelector('span').textContent += ' (Admin)'; // Add admin tag to welcome message
+        this.dom.mainNav.querySelector('button[data-page="admin"]').style.display = 'inline-block'; // Show the Admin button in the nav
+        this.populateAdminUserDropdown();
+        this.renderUserManagementTable();
+        this.renderPendingTasks();
     }
 
     // Initial UI setup
-    updateBalanceUI();
-    renderTasks();
+    this.updateBalanceUI();
+    this.renderTasks();
     // renderHistory(); // No need to render it initially, only when page is viewed
-    addNotification('Welcome to the platform! Complete tasks to earn money.', 'info');
-}
+    this.addNotification('Welcome to the platform! Complete tasks to earn money.', 'info');
+},
 
 // --- Event Handlers ---
-function attachEventListeners() {
-    const withdrawForm = document.getElementById('withdraw-form');
-    if (withdrawForm) withdrawForm.addEventListener('submit', (e) => {
+attachEventListeners() {
+    if (this.dom.withdrawForm) this.dom.withdrawForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const amount = parseFloat(e.target.elements['withdraw-amount'].value);
 
         if (isNaN(amount) || amount <= 0) {
-            return addNotification('Please enter a valid withdrawal amount.', 'error');
+            return this.addNotification('Please enter a valid withdrawal amount.', 'error');
         }
-        if (amount > appState.balance) {
-            return addNotification('Withdrawal amount cannot exceed your current balance.', 'error');
+        if (amount > this.appState.balance) {
+            return this.addNotification('Withdrawal amount cannot exceed your current balance.', 'error');
         }
-        if (!appState.agreement || !appState.agreement.bankName) {
-            return addNotification('Please complete your payment information in the Profile section before requesting a withdrawal.', 'error');
+        if (!this.appState.agreement || !this.appState.agreement.bankName) {
+            return this.addNotification('Please complete your payment information in the Profile section before requesting a withdrawal.', 'error');
         }
 
-        appState.balance -= amount;
-        updateBalanceUI();
-        logHistory('Withdrawal request', -amount);
-        saveAppState(); // Save state after balance change
-        addNotification(`Successfully requested withdrawal of $${amount.toFixed(2)}.`, 'success');
+        this.appState.balance -= amount;
+        this.updateBalanceUI();
+        this.logHistory('Withdrawal request', -amount);
+        this.saveAppState(); // Save state after balance change
+        this.addNotification(`Successfully requested withdrawal of $${amount.toFixed(2)}.`, 'success');
         e.target.reset();
     });
 
-    taskList.addEventListener('click', (e) => {
+    this.dom.taskList.addEventListener('click', (e) => {
         if (e.target.tagName === 'BUTTON') {
             // Find the task before making any changes
             const action = e.target.dataset.action;
@@ -386,19 +373,19 @@ function attachEventListeners() {
             if (!task) return;
 
             if (action === 'start') {
-                if (appState.credits < TASK_CREDIT_COST) {
-                    return addNotification('You do not have enough credits to start this task.', 'error');
+                if (this.appState.credits < this.TASK_CREDIT_COST) {
+                    return this.addNotification('You do not have enough credits to start this task.', 'error');
                 }
-                appState.credits -= TASK_CREDIT_COST;
+                this.appState.credits -= this.TASK_CREDIT_COST;
                 task.status = 'started';
-                updateBalanceUI();
-                logHistory(`Used ${TASK_CREDIT_COST} credit for task: "${task.description}"`, 0); // Logging credit use, no monetary change
+                this.updateBalanceUI();
+                this.logHistory(`Used ${this.TASK_CREDIT_COST} credit for task: "${task.description}"`, 0); // Logging credit use, no monetary change
                 stateChanged = true;
-                addNotification(`Task started! ${TASK_CREDIT_COST} credit has been used.`, 'info');
+                this.addNotification(`Task started! ${this.TASK_CREDIT_COST} credit has been used.`, 'info');
             } else if (action === 'finish') {
                 const submissionText = document.querySelector(`textarea[data-task-id="${taskId}"]`).value;
                 if (!submissionText || submissionText.trim().length < 10) {
-                    return addNotification('Please provide valid proof of completion (e.g., a link or description).', 'error');
+                    return this.addNotification('Please provide valid proof of completion (e.g., a link or description).', 'error');
                 }
 
                 task.status = 'pending'; // Mark as pending for admin review
@@ -407,48 +394,48 @@ function attachEventListeners() {
                 // In a real app, the reward is given only after admin approval.
 
                 // Increment daily task counter
-                checkAndResetDailyCounter();
-                appState.tasksCompletedToday++;
-                updateBalanceUI();
+                this.checkAndResetDailyCounter();
+                this.appState.tasksCompletedToday++;
+                this.updateBalanceUI();
                 stateChanged = true;
-                addNotification(`Task submitted for review!`, 'success');
+                this.addNotification(`Task submitted for review!`, 'success');
             }
 
             if (stateChanged) {
                 // Re-render tasks to reflect the new status
-                renderTasks();
+                this.renderTasks();
                 // Save the new state to localStorage
-                saveAppState();
+                this.saveAppState();
             }
         }
     });
 
-    marketplaceTaskList.addEventListener('click', (e) => {
+    this.dom.marketplaceTaskList.addEventListener('click', (e) => {
         if (e.target.dataset.action === 'reserve') {
-            if (appState.credits < TASK_CREDIT_COST) {
-                return addNotification('You do not have enough credits to reserve this task.', 'error');
+            if (this.appState.credits < this.TASK_CREDIT_COST) {
+                return this.addNotification('You do not have enough credits to reserve this task.', 'error');
             }
 
             const taskId = parseInt(e.target.dataset.taskId);
-            const taskToReserve = marketplaceTasks.find(t => t.id === taskId);
+            const taskToReserve = this.marketplaceTasks.find(t => t.id === taskId);
 
             if (taskToReserve) {
-                appState.credits -= TASK_CREDIT_COST;
+                this.appState.credits -= this.TASK_CREDIT_COST;
 
                 // Add the task to the user's personal list with 'available' status
                 const newTask = { ...taskToReserve, status: 'available' };
-                appState.tasks.push(newTask);
+                this.appState.tasks.push(newTask);
 
-                saveAppState();
-                renderTasks(); // Update the user's main task list view
-                marketplaceModal.classList.remove('active'); // Close the modal
-                addNotification(`Task "${taskToReserve.description}" reserved successfully!`, 'success');
+                this.saveAppState();
+                this.renderTasks(); // Update the user's main task list view
+                this.dom.marketplaceModal.classList.remove('active'); // Close the modal
+                this.addNotification(`Task "${taskToReserve.description}" reserved successfully!`, 'success');
             }
         }
     });
 
     // --- Page Navigation ---
-    mainNav.addEventListener('click', (e) => {
+    this.dom.mainNav.addEventListener('click', (e) => {
         if (e.target.tagName === 'BUTTON') {
             const pageId = e.target.dataset.page;
 
@@ -457,44 +444,43 @@ function attachEventListeners() {
             e.target.classList.add('active');
 
             // Update active page
-            pages.forEach(page => {
+            this.dom.pages.forEach(page => {
                 page.classList.toggle('active', page.id === `page-${pageId}`);
             });
 
             if (pageId === 'history') {
-                renderHistory();
+                this.renderHistory();
             }
             if (pageId === 'profile') {
-                populateAgreementForm();
+                this.populateAgreementForm();
             }
             if (pageId === 'info') {
                 // No special function needed, the content is static HTML
             }
             if (pageId === 'admin') {
                 // Re-render the admin table every time the page is viewed
-                renderUserManagementTable();
-                renderPendingTasks();
+                this.renderUserManagementTable();
+                this.renderPendingTasks();
             }
         }
     });
 
     // --- Marketplace Modal Handlers ---
-    openMarketplaceBtn.addEventListener('click', () => {
-        renderMarketplaceTasks();
-        marketplaceModal.classList.add('active');
+    this.dom.openMarketplaceBtn.addEventListener('click', () => {
+        this.renderMarketplaceTasks();
+        this.dom.marketplaceModal.classList.add('active');
     });
 
-    closeMarketplaceBtn.addEventListener('click', () => {
-        marketplaceModal.classList.remove('active');
+    this.dom.closeMarketplaceBtn.addEventListener('click', () => {
+        this.dom.marketplaceModal.classList.remove('active');
     });
 
-    const agreementForm = document.getElementById('agreement-form');
-    if (agreementForm) agreementForm.addEventListener('submit', (e) => {
+    if (this.dom.agreementForm) this.dom.agreementForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const form = e.target;
 
         if (!form.elements['agree-terms'].checked) {
-            return addNotification('You must agree to the terms to save your profile.', 'error');
+            return this.addNotification('You must agree to the terms to save your profile.', 'error');
         }
 
         const agreementDetails = {
@@ -511,97 +497,114 @@ function attachEventListeners() {
         };
 
         // Save details to the current user's state
-        appState.agreement = agreementDetails;
-        saveAppState();
+        this.appState.agreement = agreementDetails;
+        this.saveAppState();
 
-        addNotification('Your profile and payout details have been saved successfully.', 'success');
+        this.addNotification('Your profile and payout details have been saved successfully.', 'success');
     });
 
-    const adminCreditForm = document.getElementById('admin-credit-form');
-    if (adminCreditForm) adminCreditForm.addEventListener('submit', (e) => {
+    if (this.dom.adminCreditForm) this.dom.adminCreditForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const formElements = e.target.elements;
         const selectedUsername = formElements['user-select'].value;
         const amount = parseInt(e.target.elements['credit-amount'].value, 10);
 
         if (!selectedUsername) {
-            return addNotification('Please select a user to credit.', 'error');
+            return this.addNotification('Please select a user to credit.', 'error');
         }
         if (isNaN(amount) || amount <= 0) {
-            return addNotification('Please enter a valid credit amount.', 'error');
+            return this.addNotification('Please enter a valid credit amount.', 'error');
         }
 
         // Find the user in the database and update their balance
-        const userToCredit = allUsers[selectedUsername];
+        const userToCredit = this.allUsers[selectedUsername];
         if (userToCredit) {
             userToCredit.credits += amount;
             // Save the updated user data back to Firebase
             firebase.database().ref('users/' + selectedUsername).set(userToCredit);
-            addNotification(`Admin credit: ${amount} credits have been added to ${userToCredit.name}'s account.`, 'success');
+            this.addNotification(`Admin credit: ${amount} credits have been added to ${userToCredit.name}'s account.`, 'success');
         }
 
         e.target.reset();
     });
 
-    userInfo.addEventListener('click', (e) => {
+    this.dom.userInfo.addEventListener('click', (e) => {
         if (e.target.tagName === 'A' && e.target.getAttribute('href') === '#logout') {
             e.preventDefault();
-            localStorage.removeItem('loggedInUser');
-            window.location.href = 'login.html';
+            firebase.auth().signOut();
         }
     });
 
-    adminPage.addEventListener('click', (e) => {
+    this.dom.adminPage.addEventListener('click', (e) => {
         if (e.target.dataset.action === 'toggle-block') {
             const userUid = e.target.dataset.userUid;
-            const user = allUsers[userUid];
+            const user = this.allUsers[userUid];
             if (user) {
                 // Toggle the user's status
                 user.status = user.status === 'active' ? 'blocked' : 'active';
                 firebase.database().ref('users/' + userUid).child('status').set(user.status);
-                renderUserManagementTable(); // Re-render the table to show the change
-                addNotification(`User ${user.name} has been ${user.status}.`, 'success');
+                this.renderUserManagementTable(); // Re-render the table to show the change
+                this.addNotification(`User ${user.name} has been ${user.status}.`, 'success');
             }
         } else if (e.target.dataset.action === 'approve') {
             const userUid = e.target.dataset.userUid;
             const taskId = parseInt(e.target.dataset.taskId);
-            handleTaskApproval(userUid, taskId, true);
+            this.handleTaskApproval(userUid, taskId, true);
         } else if (e.target.dataset.action === 'reject') {
             const userUid = e.target.dataset.userUid;
             const taskId = parseInt(e.target.dataset.taskId);
-            handleTaskApproval(userUid, taskId, false);
+            this.handleTaskApproval(userUid, taskId, false);
         }
     });
+},
+
+start(user) {
+    this.currentFirebaseUser = user;
+    const userRef = firebase.database().ref('users/' + user.uid);
+
+    // Fetch user's profile data
+    userRef.on('value', (snapshot) => {
+        this.appState = snapshot.val();
+        if (this.appState) {
+            if (!this.listenersAttached) {
+                this.cacheDom();
+                this.attachEventListeners();
+                this.listenersAttached = true;
+            }
+            this.checkAndResetDailyCounter();
+            this.initializeApp();
+        }
+    });
+
+    // Fetch all users for admin panel and marketplace tasks
+    firebase.database().ref('users').on('value', (snapshot) => { this.allUsers = snapshot.val() || {}; });
+    firebase.database().ref('marketplaceTasks').on('value', (snapshot) => { this.marketplaceTasks = snapshot.val() || []; });
+},
+
+cacheDom() {
+    this.dom.userInfo = document.getElementById('user-info');
+    this.dom.balanceEl = document.getElementById('current-balance');
+    this.dom.toastContainer = document.getElementById('toast-container');
+    this.dom.taskList = document.getElementById('task-list');
+    this.dom.historyList = document.getElementById('history-list');
+    this.dom.mainNav = document.getElementById('main-nav');
+    this.dom.adminPage = document.getElementById('page-admin');
+    this.dom.marketplaceModal = document.getElementById('marketplace-modal');
+    this.dom.openMarketplaceBtn = document.getElementById('open-marketplace-btn');
+    this.dom.closeMarketplaceBtn = document.getElementById('close-marketplace-btn');
+    this.dom.marketplaceTaskList = document.getElementById('marketplace-task-list');
+    this.dom.pages = document.querySelectorAll('.page');
+    this.dom.withdrawForm = document.getElementById('withdraw-form');
+    this.dom.agreementForm = document.getElementById('agreement-form');
+    this.dom.adminCreditForm = document.getElementById('admin-credit-form');
 }
+};
 
 // --- Run the App ---
 document.addEventListener('DOMContentLoaded', () => {
-    // This flag ensures event listeners are only attached once.
-    let listenersAttached = false;
-
     firebase.auth().onAuthStateChanged(user => {
         if (user) {
-            // User is signed in.
-            currentFirebaseUser = user;
-            const userRef = firebase.database().ref('users/' + user.uid);
-
-            // Fetch user's profile data
-            userRef.on('value', (snapshot) => {
-                appState = snapshot.val();
-                if (appState) {
-                    if (!listenersAttached) {
-                        attachEventListeners();
-                        listenersAttached = true;
-                    }
-                    checkAndResetDailyCounter();
-                    initializeApp();
-                }
-            });
-
-            // Fetch all users for admin panel and marketplace tasks
-            firebase.database().ref('users').on('value', (snapshot) => { allUsers = snapshot.val() || {}; });
-            firebase.database().ref('marketplaceTasks').on('value', (snapshot) => { marketplaceTasks = snapshot.val() || []; });
-
+            ReviewMasterApp.start(user);
         } else {
             // User is signed out.
             window.location.replace('login.html');
@@ -611,26 +614,3 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // To reset the state for testing, you can open the browser console and run:
 // localStorage.removeItem('taskAppDatabase'); location.reload();
-
-/**
- * ONE-TIME UTILITY FUNCTION for the admin to create their database profile.
- * After adding the admin user in Firebase Authentication, log in as admin,
- * then open the browser console and run: createAdminProfile()
- */
-function createAdminProfile() {
-    const user = firebase.auth().currentUser;
-    if (user && user.email === 'admin@example.com') {
-        const adminProfile = {
-            name: 'admin',
-            email: 'admin@example.com',
-            status: 'active',
-            role: 'admin',
-            // ... add other default admin properties here if needed
-        };
-        firebase.database().ref('users/' + user.uid).set(adminProfile)
-            .then(() => console.log('Admin profile created successfully in the database!'))
-            .catch(error => console.error('Error creating admin profile:', error));
-    } else {
-        console.log('You must be logged in as the admin user to run this function.');
-    }
-}
