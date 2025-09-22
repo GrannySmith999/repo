@@ -372,7 +372,7 @@ handleAssignTaskToUser(taskId) {
 handleBulkAssign(targetUid, amountToAssign, category = null) {
     const targetUser = this.allUsers[targetUid];
     if (!targetUser) {
-        return this.addNotification('User not found.', 'error');
+        return this.acddNotification('User not found.', 'error');
     }
 
     // Filter out tasks the user already has
@@ -933,8 +933,6 @@ start(user) {
             // If the user is an admin, set up the listener for all users.
             if (this.appState.role === 'admin') {
                 firebase.database().ref('users').on('value', (allUsersSnapshot) => {
-                    this.allUsers = allUsersSnapshot.val() || {};
-                    // Now that we have all user data, render the admin components.
                     this.renderUserManagementTable();
                     this.renderPendingTasks();
                 });
@@ -942,6 +940,13 @@ start(user) {
 
             this.checkAndResetDailyCounter();
             this.initializeApp();
+
+            // If the user is an admin, set up the listener for all users.
+            if (this.appState.role === 'admin') {
+                firebase.database().ref('users').on('value', (allUsersSnapshot) => {
+                    this.allUsers = allUsersSnapshot.val() || {};
+                });
+            }
         }
     });
 
