@@ -805,7 +805,7 @@ attachEventListeners() {
     });
 
     // Consolidated listener for the entire admin page.
-    this.dom.adminPage.addEventListener('click', async (e) => {
+    document.getElementById('page-admin').addEventListener('click', async (e) => {
         const target = e.target;
         const action = target.dataset.action;
         const userUid = target.dataset.userUid;
