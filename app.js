@@ -839,11 +839,17 @@ attachEventListeners() {
                     }
                 }
             }
-        } else if (target.id === 'generate-tasks-btn') { // Use an else-if block
+        } else if (target.id === 'generate-tasks-btn') {
             const numToGenerate = parseInt(document.getElementById('generate-tasks-amount').value, 10);
             if (isNaN(numToGenerate) || numToGenerate < 1 || numToGenerate > 100) {
                 return this.addNotification('Please enter a number between 1 and 100.', 'error');
             }
+
+            // --- Add loading state to the button ---
+            console.log('Starting task generation...');
+            target.disabled = true;
+            target.textContent = 'Generating...';
+
             this.addNotification('Generating new tasks... Please wait.', 'info');
             const newTasksPromises = [];
             for (let i = 0; i < Math.ceil(numToGenerate / 2); i++) {
@@ -864,6 +870,11 @@ attachEventListeners() {
             firebase.database().ref().update(updates);
 
             this.addNotification(`${filteredTasks.length} new tasks have been generated and added to your assignment pool.`, 'success');
+
+            // --- Restore the button's original state ---
+            target.disabled = false;
+            target.textContent = 'Generate New Tasks';
+
         }
     });
 
@@ -939,21 +950,25 @@ start(user) {
     this.currentFirebaseUser = user;
     const userRef = firebase.database().ref('users/' + user.uid);
 
-    // Fetch user's profile data
-    userRef.once('value').then((snapshot) => {
-        this.appState = snapshot.val();
-        if (this.appState) {
-            // Set up listeners that depend on the user's role.
+    // Add a real-time listener for the current user's data.
+    // This listener ONLY updates the state object and the balance UI. It does NOT render pages.
+    userRef.on('value', (userSnapshot) => {
+        this.appState = userSnapshot.val() || {};
+        if (!this.appState) return; // Stop if there's no data
+
+        this.updateBalanceUI(); // Always keep balance updated
+
+        // This block should only run ONCE to set up role-specific listeners and initial UI
+        if (!this.listenersAttached) {
+            this.listenersAttached = true; // Prevent this from running on every data update
+
+            // If the user is an admin, set up the listener for all users.
             if (this.appState.role === 'admin') {
-                // For admins, listen to changes on ALL users in real-time.
-                firebase.database().ref('users').on('value', (userSnapshot) => {
-                    this.allUsers = userSnapshot.val() || {};
-                    // Re-render admin components whenever user data changes.
+                firebase.database().ref('users').on('value', (allUsersSnapshot) => {
+                    this.allUsers = allUsersSnapshot.val() || {};
+                    // Now that we have all user data, render the admin components.
                     this.renderUserManagementTable();
                     this.renderPendingTasks();
-                    this.populateAdminUserDropdown();
-                    this.populateAdminUserDropdown(document.getElementById('manual-assign-form'));
-                    this.populateAdminUserDropdown(document.getElementById('assign-by-category-form'));
                 });
             }
 
@@ -963,12 +978,6 @@ start(user) {
     });
 
     // Add a real-time listener for the current user's data.
-    // This listener ONLY updates the state object and the balance UI. It does NOT render pages.
-    userRef.on('value', (userSnapshot) => {
-        this.appState = userSnapshot.val() || {};
-        this.updateBalanceUI(); // Always keep balance updated
-    });
-
     // Listen for marketplace tasks.
     // This listener ONLY updates the state object. It does NOT render pages.
     firebase.database().ref('marketplaceTasks').on('value', (snapshot) => { 
@@ -979,6 +988,9 @@ start(user) {
         }
         // Also update category dropdown if admin is on the admin page
         if (this.appState.role === 'admin' && this.dom.adminPage.classList.contains('active')) {
+            // Populate dropdowns now that we have the data
+            this.populateAdminUserDropdown(document.getElementById('manual-assign-form'));
+            this.populateAdminUserDropdown(document.getElementById('assign-by-category-form'));
             this.populateAdminCategoryDropdown(document.getElementById('assign-by-category-form'));
         }
     });
