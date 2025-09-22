@@ -372,7 +372,7 @@ handleAssignTaskToUser(taskId) {
 handleBulkAssign(targetUid, amountToAssign, category = null) {
     const targetUser = this.allUsers[targetUid];
     if (!targetUser) {
-        return this.acddNotification('User not found.', 'error');
+        return this.addNotification('User not found.', 'error');
     }
 
     // Filter out tasks the user already has
@@ -494,6 +494,7 @@ populateAdminCategoryDropdown(targetForm) {
 async generateNewTaskFromAPI(taskType) {
     // In a real implementation, you would get these from a secure place.
     const API_KEY = 'PASTE_YOUR_NEW_API_KEY_HERE'; // IMPORTANT: Replace with your new, secure key
+    const API_KEY = 'AIzaSy...YOUR_REAL_API_KEY...lHVqXk56Fo'; // IMPORTANT: Replace with your key and restrict it in Google Cloud Console.
     const SEARCH_ENGINE_ID = '01efd7843a7744ad0'; // Your Search Engine ID
 
     let query = '';
