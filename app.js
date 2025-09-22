@@ -243,8 +243,8 @@ renderUserManagementTable() {
         // Calculate completed tasks and tier breakdown
         let completedTasksCount = 0;
         const tierCounts = { Basic: 0, Gold: 0, Platinum: 0, Diamond: 0 };
-        if (user.tasks && Array.isArray(user.tasks)) {
-            user.tasks.forEach(task => {
+        if (user.tasks && typeof user.tasks === 'object') {
+            Object.values(user.tasks).forEach(task => {
                 if (task.status === 'completed') {
                     completedTasksCount++;
                     if (tierCounts.hasOwnProperty(task.tier)) {
