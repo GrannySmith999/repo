@@ -84,7 +84,6 @@ renderTasks() {
             statusBadge = `<span class="status-badge" style="background-color: var(--success-color);">Available</span>`;
             taskContent = `<p>This task is ready for you to start!</p><div class="task-actions"><button data-task-id="${task.id}" data-action="start">Start Task (${this.getCurrentTierInfo().creditCost} Credits)</button></div>`;
             targetList = this.dom.availableTaskList;
-            hasInProgress = true;
         } else if (task.status === 'started') {
             statusBadge = `<span class="status-badge" style="background-color: #f0ad4e;">In Progress</span>`;
             taskContent = `
@@ -182,6 +181,12 @@ renderMarketplaceTasks() {
             </div>
         `;
         this.dom.marketplaceTaskList.appendChild(taskEl);
+
+        // Also render to admin marketplace view if it exists
+        const adminMarketplaceList = document.getElementById('admin-marketplace-list');
+        if (adminMarketplaceList) {
+            adminMarketplaceList.appendChild(taskEl.cloneNode(true));
+        }
     });
 },
 
@@ -500,6 +505,7 @@ initializeApp() {
         this.dom.mainNav.querySelector('button[data-page="admin"]').style.display = 'inline-block'; // Show the Admin button in the nav
         this.renderPendingTasks();
         this.renderUserManagementTable();
+        this.renderMarketplaceTasks(); // Render marketplace for admin view
     }
 
     // Initial UI setup
@@ -645,6 +651,7 @@ attachEventListeners() {
                 // Re-render the admin table every time the page is viewed
                 this.renderUserManagementTable();
                 this.renderPendingTasks();
+                this.renderMarketplaceTasks();
             }
         }
     });
@@ -724,7 +731,7 @@ attachEventListeners() {
 
     // This listener is for the header (logout and profile button)
     this.dom.userInfo.addEventListener('click', (e) => {
-        if (e.target.getAttribute('href') === '#logout') {
+        if (e.target.id === 'logout-btn') {
             e.preventDefault();
             firebase.auth().signOut();
         }
