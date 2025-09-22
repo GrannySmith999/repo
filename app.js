@@ -63,7 +63,7 @@ addNotification(message, type = 'info') { // type can be 'info', 'success', 'err
 
 renderTasks() {
     // Clear all task lists
-    this.dom.inProgressTaskList.innerHTML = '';
+    this.dom.inProgressTaskList.innerHTML = ''; // This was the only one being cleared, let's clear all.
     this.dom.availableTaskList.innerHTML = '';
     this.dom.pendingTaskList.innerHTML = '';
     this.dom.rejectedTaskList.innerHTML = '';
@@ -136,12 +136,14 @@ renderTasks() {
 },
 
 renderMarketplaceTasks() {
+    // Clear both user and admin marketplace lists before rendering
     this.dom.marketplaceTaskList.innerHTML = '';
+    const adminMarketplaceList = document.getElementById('admin-marketplace-list');
+    if (adminMarketplaceList) adminMarketplaceList.innerHTML = '';
+
     const userTaskIds = this.appState.tasks ? this.appState.tasks.map(t => t.id) : [];
 
     if (!this.marketplaceTasks || this.marketplaceTasks.length === 0) {
-        const message = '<p>No new tasks are available in the marketplace right now. Please check back later.</p>';
-        this.dom.marketplaceTaskList.innerHTML = message;
         return;
     }
 
@@ -149,20 +151,12 @@ renderMarketplaceTasks() {
 
     const isAdmin = this.appState.role === 'admin';
 
+    // === Render for the main user marketplace view ===
     this.marketplaceTasks.forEach(task => {
-        // Don't show tasks the user has already reserved
-        if (userTaskIds.includes(task.id)) {
-            return;
+        // For users: only show tasks they haven't reserved and that match their tier.
+        if (!isAdmin && (userTaskIds.includes(task.id) || task.tier !== this.appState.tier)) {
+            return; // Skip this task for the user view
         }
-
-        // For users, only show tasks matching their tier. Admins see all.
-        if (task.tier !== this.appState.tier && this.appState.role !== 'admin') {
-            return;
-        }
-
-        const actionButton = isAdmin 
-            ? `<button data-task-id="${task.id}" data-action="assign-to-user" class="assign-btn">Assign to User</button>`
-            : `<button data-task-id="${task.id}" data-action="reserve">Reserve Task (${userTierInfo.creditCost} Credits)</button>`;
 
         const taskEl = document.createElement('div'); 
         taskEl.className = 'task task-marketplace';
@@ -175,19 +169,37 @@ renderMarketplaceTasks() {
                 <div class="task-body">
                     <p>${task.description}</p>
                     <div class="task-actions">
-                        ${actionButton}
+                        <button data-task-id="${task.id}" data-action="reserve">Reserve Task (${userTierInfo.creditCost} Credits)</button>
                     </div>
                 </div>
             </div>
         `;
         this.dom.marketplaceTaskList.appendChild(taskEl);
-
-        // Also render to admin marketplace view if it exists
-        const adminMarketplaceList = document.getElementById('admin-marketplace-list');
-        if (adminMarketplaceList) {
-            adminMarketplaceList.appendChild(taskEl.cloneNode(true));
-        }
     });
+
+    // === Render for the admin marketplace view (if it exists) ===
+    if (isAdmin && adminMarketplaceList) {
+        this.marketplaceTasks.forEach(task => {
+            const taskEl = document.createElement('div');
+            taskEl.className = 'task task-marketplace';
+            taskEl.innerHTML = `
+                <div class="task-info">
+                    <div class="task-header">
+                        <h4>${task.type}</h4>
+                        <span class="status-badge" style="background-color: #555;">${task.tier || 'Basic'} Tier</span>
+                    </div>
+                    <div class="task-body">
+                        <p>${task.description}</p>
+                        <div class="task-actions">
+                            <button data-task-id="${task.id}" data-action="assign-to-user" class="assign-btn">Assign to User</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            adminMarketplaceList.appendChild(taskEl);
+        }
+    );
+    }
 },
 
 renderHistory() {
@@ -550,6 +562,9 @@ attachEventListeners() {
             let stateChanged = false;
 
             if (action === 'reserve') {
+                if (this.appState.status === 'blocked') {
+                    return this.addNotification('Your account is currently suspended. Please contact an administrator.', 'error');
+                }
                 if (this.appState.tasksAssignedToday >= this.appState.dailyTaskQuota) {
                     return this.addNotification(`You have reached your daily limit of ${this.appState.dailyTaskQuota} assigned tasks.`, 'error');
                 }
