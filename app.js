@@ -70,14 +70,15 @@ renderTasks() {
 
     let hasInProgress = false, hasPending = false, hasRejected = false;
 
-    if (!Array.isArray(this.appState.tasks)) this.appState.tasks = [];
+    // If tasks is not an object, or is an array, initialize as an empty object.
+    if (typeof this.appState.tasks !== 'object' || this.appState.tasks === null || Array.isArray(this.appState.tasks)) {
+        this.appState.tasks = {};
+    }
     
-    this.appState.tasks.forEach(task => {
+    Object.values(this.appState.tasks).forEach(task => {
         const taskEl = document.createElement('div');
         taskEl.className = `task status-${task.status}`; // Add status-specific class
 
-        let statusBadge = '';
-        let taskContent = '';
         let targetList = null;
 
         if (task.status === 'available') {
@@ -143,8 +144,7 @@ renderTasks() {
 renderMarketplaceTasks() {
     // Clear both user and admin marketplace lists before rendering
     this.dom.marketplaceTaskList.innerHTML = '';
-
-    const userTaskIds = this.appState.tasks ? this.appState.tasks.map(t => t.id) : [];
+    const userTaskIds = this.appState.tasks ? Object.keys(this.appState.tasks).map(id => parseInt(id)) : [];
 
     if (!this.marketplaceTasks || this.marketplaceTasks.length === 0) {
         return;
@@ -291,8 +291,9 @@ renderPendingTasks() {
     let hasPendingTasks = false;
 
     for (const uid in this.allUsers) {
-        const user = this.allUsers[uid];
-        if (user.tasks && Array.isArray(user.tasks)) user.tasks.forEach(task => {
+        const user = this.allUsers[uid]; 
+        if (user.tasks && typeof user.tasks === 'object') {
+            Object.values(user.tasks).forEach(task => {
             if (task.status === 'pending') {
                 hasPendingTasks = true;
                 const taskEl = document.createElement('div');
@@ -310,7 +311,8 @@ renderPendingTasks() {
                 `;
                 container.appendChild(taskEl);
             }
-        });
+            });
+        }
     }
 
     if (!hasPendingTasks) {
@@ -324,17 +326,16 @@ handleTaskApproval(userUid, taskId, isApproved) {
         const user = snapshot.val();
         if (!user || !user.tasks) return;
 
-        const taskIndex = user.tasks.findIndex(t => t.id === taskId);
-        if (taskIndex === -1) return;
+        const taskRef = firebase.database().ref(`users/${userUid}/tasks/${taskId}`);
 
         if (isApproved) {
-            user.tasks[taskIndex].status = 'completed';
-            const tierInfo = this.tiers[user.tasks[taskIndex].tier] || this.tiers['Basic'];
-            user.balance = (user.balance || 0) + tierInfo.earning;
+            const tierInfo = this.tiers[user.tasks[taskId].tier] || this.tiers['Basic'];
+            const newBalance = (user.balance || 0) + tierInfo.earning;
+            taskRef.update({ status: 'completed' });
+            firebase.database().ref(`users/${userUid}/balance`).set(newBalance);
         } else {
-            user.tasks[taskIndex].status = 'started'; // Return task to user to re-submit
+            taskRef.update({ status: 'started' }); // Return task to user to re-submit
         }
-        userRef.set(user); // Save the updated user object back to Firebase
         // The real-time listener for admins will automatically refresh the UI.
     });
 },
@@ -349,7 +350,10 @@ handleAssignTaskToUser(taskId) {
     }
 
     const [targetUid, targetUser] = targetUserEntry;
-    const taskToAssign = this.marketplaceTasks.find(t => t.id === taskId);
+    
+    // Admins assign from their own task pool
+    const adminTasks = this.appState.tasks ? Object.values(this.appState.tasks) : [];
+    const taskToAssign = adminTasks.find(t => t.id === taskId && t.status === 'unassigned');
 
     if (taskToAssign) {
         const newTask = { ...taskToAssign, status: 'available' };
@@ -357,6 +361,11 @@ handleAssignTaskToUser(taskId) {
         const userTaskRef = firebase.database().ref(`users/${targetUid}/tasks/${taskToAssign.id}`);
         userTaskRef.set(newTask);
         this.addNotification(`Task "${taskToAssign.description}" assigned to ${targetUser.name}.`, 'success');
+
+        // Remove the task from the admin's pool
+        const adminTaskRef = firebase.database().ref(`users/${this.currentFirebaseUser.uid}/tasks/${taskId}`);
+        adminTaskRef.remove();
+
     }
 },
 
@@ -403,7 +412,7 @@ handleAssignByCategory(targetUid, category, amountToAssign) {
     }
 
     // Filter marketplace tasks by the selected category and ensure the user doesn't already have them.
-    const userTaskIds = targetUser.tasks ? Object.keys(targetUser.tasks).map(id => parseInt(id)) : [];
+    const userTaskIds = targetUser.tasks ? Object.keys(targetUser.tasks).map(id => parseInt(id)) : []; // This was already correct
     const availableMarketplaceTasks = this.marketplaceTasks.filter(task => task.type === category && !userTaskIds.includes(task.id));
 
     if (availableMarketplaceTasks.length < amountToAssign) {
@@ -617,9 +626,8 @@ attachEventListeners() {
                     this.appState.credits -= creditCost;
                     this.appState.tasksAssignedToday = (this.appState.tasksAssignedToday || 0) + 1;
                     const newTask = { ...taskToReserve, status: 'available' };
-                    if (!this.appState.tasks) this.appState.tasks = [];
-                    this.appState.tasks.push(newTask);
-                    this.saveAppState();
+                    // Use update to add the new task to the tasks object, using its ID as the key
+                    firebase.database().ref(`users/${this.currentFirebaseUser.uid}/tasks/${newTask.id}`).set(newTask);
                     this.addNotification(`Task "${taskToReserve.description}" reserved successfully!`, 'success');
                 }
                 return;
@@ -629,7 +637,7 @@ attachEventListeners() {
                 return;
             }
 
-            const task = this.appState.tasks ? this.appState.tasks.find(t => t.id === taskId) : null;
+            const task = this.appState.tasks ? this.appState.tasks[taskId] : null;
 
             // If the task is not in the user's list, it might be a marketplace action (like admin assign)
             if (!task) {
