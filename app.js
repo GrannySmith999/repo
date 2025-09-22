@@ -84,6 +84,11 @@ renderTasks() {
             statusBadge = `<span class="status-badge" style="background-color: var(--success-color);">Available</span>`;
             taskContent = `<p>This task is ready for you to start!</p><div class="task-actions"><button data-task-id="${task.id}" data-action="start">Start Task (${this.getCurrentTierInfo().creditCost} Credits)</button></div>`;
             targetList = this.dom.availableTaskList;
+        } else if (task.status === 'unassigned' && this.appState.role === 'admin') {
+            // Special view for admins to see tasks they can assign
+            statusBadge = `<span class="status-badge" style="background-color: #555;">Unassigned</span>`;
+            taskContent = `<p>This task is in your pool to be assigned to a user.</p><div class="task-actions"><button data-task-id="${task.id}" data-action="assign-to-user" class="assign-btn">Assign to User</button></div>`;
+            targetList = this.dom.availableTaskList; // Show in the 'Available' tab for admins
         } else if (task.status === 'started') {
             statusBadge = `<span class="status-badge" style="background-color: #f0ad4e;">In Progress</span>`;
             taskContent = `
@@ -151,11 +156,9 @@ renderMarketplaceTasks() {
 
     // === Render for the main user marketplace view ===
     this.marketplaceTasks.forEach(task => {
-        // For users: only show tasks they haven't reserved and that match their tier
-        if (!isAdmin) {
-            if (userTaskIds.includes(task.id) || task.tier !== this.appState.tier) {
-                return; // Skip this task for the user view
-            }
+        // Marketplace is now only for non-admins. Admins assign from their own task list.
+        if (isAdmin || userTaskIds.includes(task.id) || task.tier !== this.appState.tier) {
+            return; // Skip this task for the user view
         }
 
         const actionButton = isAdmin
@@ -364,8 +367,11 @@ handleBulkAssign(targetUid, amountToAssign, category = null) {
     }
 
     // Filter out tasks the user already has
-    const userTaskIds = targetUser.tasks ? targetUser.tasks.map(t => t.id) : [];
-    let availableMarketplaceTasks = this.marketplaceTasks.filter(task => !userTaskIds.includes(task.id));
+    const userTaskIds = targetUser.tasks ? Object.keys(targetUser.tasks).map(id => parseInt(id)) : [];
+    
+    // Admins assign from their own pool of 'unassigned' tasks, not the global marketplace.
+    const adminTasks = this.appState.tasks ? Object.values(this.appState.tasks) : [];
+    let availableMarketplaceTasks = adminTasks.filter(task => task.status === 'unassigned' && !userTaskIds.includes(task.id));
 
     // If a category is specified, filter by it
     if (category) {
@@ -373,14 +379,17 @@ handleBulkAssign(targetUid, amountToAssign, category = null) {
     }
 
     if (availableMarketplaceTasks.length < amountToAssign) {
-        const categoryText = category ? ` in the '${category}' category` : '';
+        const categoryText = category ? ` in the '${category}' category` : 'in your assignment pool';
         return this.addNotification(`Not enough unique tasks${categoryText}. Only ${availableMarketplaceTasks.length} available.`, 'error');
     }
 
     const tasksToAssign = availableMarketplaceTasks.slice(0, amountToAssign);
     const updates = {};
     tasksToAssign.forEach(task => {
+        // Assign the task to the target user
         updates[`/users/${targetUid}/tasks/${task.id}`] = { ...task, status: 'available' };
+        // Remove the task from the admin's pool by setting it to null
+        updates[`/users/${this.currentFirebaseUser.uid}/tasks/${task.id}`] = null;
     });
 
     firebase.database().ref().update(updates);
@@ -394,7 +403,7 @@ handleAssignByCategory(targetUid, category, amountToAssign) {
     }
 
     // Filter marketplace tasks by the selected category and ensure the user doesn't already have them.
-    const userTaskIds = targetUser.tasks ? targetUser.tasks.map(t => t.id) : [];
+    const userTaskIds = targetUser.tasks ? Object.keys(targetUser.tasks).map(id => parseInt(id)) : [];
     const availableMarketplaceTasks = this.marketplaceTasks.filter(task => task.type === category && !userTaskIds.includes(task.id));
 
     if (availableMarketplaceTasks.length < amountToAssign) {
@@ -506,7 +515,7 @@ async generateNewTaskFromAPI(taskType) {
                 id: Date.now(),
                 type: taskType,
                 description: `Perform a task for: ${firstResult.title}`,
-                link: firstResult.link,
+                link: firstResult.link, 
                 instructions: `Please leave a positive and relevant ${taskType.toLowerCase()}.`,
                 tier: tier,
                 status: 'available'
@@ -837,10 +846,16 @@ attachEventListeners() {
             }
             const generatedTasks = await Promise.all(newTasksPromises);
             const filteredTasks = generatedTasks.filter(task => task !== null);
-            const updatedMarketplace = [...this.marketplaceTasks, ...filteredTasks];
-            firebase.database().ref('marketplaceTasks').set(updatedMarketplace);
-            this.addNotification(`${filteredTasks.length} new tasks have been generated!`, 'success');
-            this.renderMarketplaceTasks(); // Re-render the marketplace view to show the new tasks
+
+            // Instead of adding to the marketplace, add to the admin's own task list.
+            const updates = {};
+            filteredTasks.forEach(task => {
+                // Use a special status to denote tasks ready for assignment.
+                updates[`/users/${this.currentFirebaseUser.uid}/tasks/${task.id}`] = { ...task, status: 'unassigned' };
+            });
+            firebase.database().ref().update(updates);
+
+            this.addNotification(`${filteredTasks.length} new tasks have been generated and added to your assignment pool.`, 'success');
         }
     });
 
