@@ -350,17 +350,14 @@ handleAssignTaskToUser(taskId) {
 
     if (taskToAssign) {
         const newTask = { ...taskToAssign, status: 'available' };
-        const userTasksRef = firebase.database().ref(`users/${targetUid}/tasks`);
-        userTasksRef.push(newTask); // Use push to add to a list in Firebase
+        // Use the task's unique ID as the key to prevent duplicates and ensure object structure
+        const userTaskRef = firebase.database().ref(`users/${targetUid}/tasks/${taskToAssign.id}`);
+        userTaskRef.set(newTask);
         this.addNotification(`Task "${taskToAssign.description}" assigned to ${targetUser.name}.`, 'success');
     }
 },
 
-handleManualAssignTasks(targetUid, amountToAssign) {
-    if (!targetUid || !amountToAssign) {
-        return this.addNotification('Invalid user or amount.', 'error');
-    }
-
+handleBulkAssign(targetUid, amountToAssign, category = null) {
     const targetUser = this.allUsers[targetUid];
     if (!targetUser) {
         return this.addNotification('User not found.', 'error');
@@ -368,30 +365,29 @@ handleManualAssignTasks(targetUid, amountToAssign) {
 
     // Filter out tasks the user already has
     const userTaskIds = targetUser.tasks ? targetUser.tasks.map(t => t.id) : [];
-    const availableMarketplaceTasks = this.marketplaceTasks.filter(task => !userTaskIds.includes(task.id));
+    let availableMarketplaceTasks = this.marketplaceTasks.filter(task => !userTaskIds.includes(task.id));
+
+    // If a category is specified, filter by it
+    if (category) {
+        availableMarketplaceTasks = availableMarketplaceTasks.filter(task => task.type === category);
+    }
 
     if (availableMarketplaceTasks.length < amountToAssign) {
-        return this.addNotification(`Not enough unique tasks in the marketplace. Only ${availableMarketplaceTasks.length} available.`, 'error');
+        const categoryText = category ? ` in the '${category}' category` : '';
+        return this.addNotification(`Not enough unique tasks${categoryText}. Only ${availableMarketplaceTasks.length} available.`, 'error');
     }
 
     const tasksToAssign = availableMarketplaceTasks.slice(0, amountToAssign);
-    const userTasksRef = firebase.database().ref(`users/${targetUid}/tasks`);
-
-    // Get existing tasks to append to
-    userTasksRef.once('value', (snapshot) => {
-        const existingTasks = snapshot.val() || [];
-        const newTasksForUser = tasksToAssign.map(task => ({ ...task, status: 'available' }));
-        userTasksRef.set([...existingTasks, ...newTasksForUser]);
+    const updates = {};
+    tasksToAssign.forEach(task => {
+        updates[`/users/${targetUid}/tasks/${task.id}`] = { ...task, status: 'available' };
     });
 
+    firebase.database().ref().update(updates);
     this.addNotification(`Successfully assigned ${amountToAssign} tasks to ${targetUser.name}.`, 'success');
 },
 
 handleAssignByCategory(targetUid, category, amountToAssign) {
-    if (!targetUid || !category || !amountToAssign) {
-        return this.addNotification('Invalid user, category, or amount.', 'error');
-    }
-
     const targetUser = this.allUsers[targetUid];
     if (!targetUser) {
         return this.addNotification('User not found.', 'error');
@@ -399,30 +395,21 @@ handleAssignByCategory(targetUid, category, amountToAssign) {
 
     // Filter marketplace tasks by the selected category and ensure the user doesn't already have them.
     const userTaskIds = targetUser.tasks ? targetUser.tasks.map(t => t.id) : [];
-    const availableMarketplaceTasks = this.marketplaceTasks.filter(task =>
-        task.type === category && !userTaskIds.includes(task.id)
-    );
+    const availableMarketplaceTasks = this.marketplaceTasks.filter(task => task.type === category && !userTaskIds.includes(task.id));
 
     if (availableMarketplaceTasks.length < amountToAssign) {
         return this.addNotification(`Not enough unique tasks in the '${category}' category. Only ${availableMarketplaceTasks.length} available.`, 'error');
     }
 
     const tasksToAssign = availableMarketplaceTasks.slice(0, amountToAssign);
-    const userTasksRef = firebase.database().ref(`users/${targetUid}/tasks`);
-
-    // Get existing tasks to append to
-    userTasksRef.once('value', (snapshot) => {
-        let existingTasks = [];
-        // Firebase returns an object if keys are not sequential integers, so we must convert it
-        const snapshotVal = snapshot.val();
-        if (Array.isArray(snapshotVal)) {
-            existingTasks = snapshotVal;
-        } else if (snapshotVal) {
-            existingTasks = Object.values(snapshotVal);
-        }
-        const newTasksForUser = tasksToAssign.map(task => ({ ...task, status: 'available' }));
-        userTasksRef.set([...existingTasks, ...newTasksForUser]);
+    const updates = {};
+    tasksToAssign.forEach(task => {
+        // Add each new task to the updates object
+        updates[`/users/${targetUid}/tasks/${task.id}`] = { ...task, status: 'available' };
     });
+
+    // Perform a single multi-path update
+    firebase.database().ref().update(updates);
 
     this.addNotification(`Successfully assigned ${amountToAssign} '${category}' tasks to ${targetUser.name}.`, 'success');
 },
@@ -902,7 +889,7 @@ attachEventListeners() {
             if (isNaN(amountToAssign) || amountToAssign <= 0) {
                 return this.addNotification('Please enter a valid number of tasks to assign.', 'error');
             }
-            this.handleManualAssignTasks(targetUid, amountToAssign);
+            this.handleBulkAssign(targetUid, amountToAssign);
         });
     }
 
@@ -920,7 +907,7 @@ attachEventListeners() {
             if (isNaN(amountToAssign) || amountToAssign <= 0) {
                 return this.addNotification('Please enter a valid number of tasks.', 'error');
             }
-            this.handleAssignByCategory(targetUid, category, amountToAssign);
+            this.handleBulkAssign(targetUid, amountToAssign, category);
         });
     }
 },
