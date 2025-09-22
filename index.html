@@ -88,7 +88,7 @@
                 <span>Welcome, User!</span>
                 <span class="credits">⭐ 0 Credits</span>
                 <a href="#" data-page="profile" class="profile-btn nav-link-btn">👤 Profile</a>
-                <a href="#logout">Logout</a>
+                <a href="#logout" id="logout-btn">Logout</a>
             </div>
             <!-- You could show a "Login" link here if the user is not authenticated -->
         </nav>
@@ -283,6 +283,13 @@
                         <button type="submit">Add Credits</button>
                     </form>
                 </section>
+
+                <div class="admin-section">
+                    <h3>Marketplace Tasks (Admin View)</h3>
+                    <div id="admin-marketplace-list" class="task-list">
+                        <!-- Admin marketplace tasks will be rendered here by JavaScript -->
+                    </div>
+                </div>
             </div>
         </div>
     </main>
@@ -297,3 +304,5 @@
     <script src="init.js" defer></script>
     <script src="app.js" defer></script>
 </body>
+
+</html>
