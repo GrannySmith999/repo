@@ -790,6 +790,7 @@ attachEventListeners() {
             const updatedMarketplace = [...this.marketplaceTasks, ...filteredTasks];
             firebase.database().ref('marketplaceTasks').set(updatedMarketplace);
             this.addNotification(`${filteredTasks.length} new tasks have been generated!`, 'success');
+            this.renderMarketplaceTasks(); // Re-render the marketplace view to show the new tasks
         }
     });
 
