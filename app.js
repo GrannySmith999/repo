@@ -138,8 +138,6 @@ renderTasks() {
 renderMarketplaceTasks() {
     // Clear both user and admin marketplace lists before rendering
     this.dom.marketplaceTaskList.innerHTML = '';
-    const adminMarketplaceList = document.getElementById('admin-marketplace-list');
-    if (adminMarketplaceList) adminMarketplaceList.innerHTML = '';
 
     const userTaskIds = this.appState.tasks ? this.appState.tasks.map(t => t.id) : [];
 
@@ -153,10 +151,16 @@ renderMarketplaceTasks() {
 
     // === Render for the main user marketplace view ===
     this.marketplaceTasks.forEach(task => {
-        // For users: only show tasks they haven't reserved and that match their tier.
-        if (!isAdmin && (userTaskIds.includes(task.id) || task.tier !== this.appState.tier)) {
-            return; // Skip this task for the user view
+        // For users: only show tasks they haven't reserved and that match their tier
+        if (!isAdmin) {
+            if (userTaskIds.includes(task.id) || task.tier !== this.appState.tier) {
+                return; // Skip this task for the user view
+            }
         }
+
+        const actionButton = isAdmin
+            ? `<button data-task-id="${task.id}" data-action="assign-to-user" class="assign-btn">Assign to User</button>`
+            : `<button data-task-id="${task.id}" data-action="reserve">Reserve Task (${userTierInfo.creditCost} Credits)</button>`;
 
         const taskEl = document.createElement('div'); 
         taskEl.className = 'task task-marketplace';
@@ -164,42 +168,18 @@ renderMarketplaceTasks() {
             <div class="task-info">
                 <div class="task-header">
                     <h4>${task.type}</h4>
-                    <span class="status-badge" style="background-color: #555;">${task.tier || 'Basic'} Tier</span>
+                    <span class="status-badge" style="background-color: #555;">${task.tier || 'Basic'} Tier</span> 
                 </div>
                 <div class="task-body">
                     <p>${task.description}</p>
                     <div class="task-actions">
-                        <button data-task-id="${task.id}" data-action="reserve">Reserve Task (${userTierInfo.creditCost} Credits)</button>
+                        ${actionButton}
                     </div>
                 </div>
             </div>
         `;
         this.dom.marketplaceTaskList.appendChild(taskEl);
     });
-
-    // === Render for the admin marketplace view (if it exists) ===
-    if (isAdmin && adminMarketplaceList) {
-        this.marketplaceTasks.forEach(task => {
-            const taskEl = document.createElement('div');
-            taskEl.className = 'task task-marketplace';
-            taskEl.innerHTML = `
-                <div class="task-info">
-                    <div class="task-header">
-                        <h4>${task.type}</h4>
-                        <span class="status-badge" style="background-color: #555;">${task.tier || 'Basic'} Tier</span>
-                    </div>
-                    <div class="task-body">
-                        <p>${task.description}</p>
-                        <div class="task-actions">
-                            <button data-task-id="${task.id}" data-action="assign-to-user" class="assign-btn">Assign to User</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            adminMarketplaceList.appendChild(taskEl);
-        }
-    );
-    }
 },
 
 renderHistory() {
@@ -407,6 +387,45 @@ handleManualAssignTasks(targetUid, amountToAssign) {
     this.addNotification(`Successfully assigned ${amountToAssign} tasks to ${targetUser.name}.`, 'success');
 },
 
+handleAssignByCategory(targetUid, category, amountToAssign) {
+    if (!targetUid || !category || !amountToAssign) {
+        return this.addNotification('Invalid user, category, or amount.', 'error');
+    }
+
+    const targetUser = this.allUsers[targetUid];
+    if (!targetUser) {
+        return this.addNotification('User not found.', 'error');
+    }
+
+    // Filter marketplace tasks by the selected category and ensure the user doesn't already have them.
+    const userTaskIds = targetUser.tasks ? targetUser.tasks.map(t => t.id) : [];
+    const availableMarketplaceTasks = this.marketplaceTasks.filter(task =>
+        task.type === category && !userTaskIds.includes(task.id)
+    );
+
+    if (availableMarketplaceTasks.length < amountToAssign) {
+        return this.addNotification(`Not enough unique tasks in the '${category}' category. Only ${availableMarketplaceTasks.length} available.`, 'error');
+    }
+
+    const tasksToAssign = availableMarketplaceTasks.slice(0, amountToAssign);
+    const userTasksRef = firebase.database().ref(`users/${targetUid}/tasks`);
+
+    // Get existing tasks to append to
+    userTasksRef.once('value', (snapshot) => {
+        let existingTasks = [];
+        // Firebase returns an object if keys are not sequential integers, so we must convert it
+        const snapshotVal = snapshot.val();
+        if (Array.isArray(snapshotVal)) {
+            existingTasks = snapshotVal;
+        } else if (snapshotVal) {
+            existingTasks = Object.values(snapshotVal);
+        }
+        const newTasksForUser = tasksToAssign.map(task => ({ ...task, status: 'available' }));
+        userTasksRef.set([...existingTasks, ...newTasksForUser]);
+    });
+
+    this.addNotification(`Successfully assigned ${amountToAssign} '${category}' tasks to ${targetUser.name}.`, 'success');
+},
 // --- Initialization Function ---
 populateAdminUserDropdown(targetForm) {
     // Default to the credit form if no specific form is provided.
@@ -434,6 +453,31 @@ populateAdminUserDropdown(targetForm) {
     // Add the dropdown to the form
     const firstInput = form.querySelector('label');
     form.insertBefore(select, firstInput);
+},
+
+populateAdminCategoryDropdown(targetForm) {
+    if (!targetForm) return;
+
+    const existingSelect = targetForm.querySelector('select[name="category-select"]');
+    if (existingSelect) {
+        existingSelect.remove();
+    }
+
+    // Get unique task types from the marketplace
+    const categories = [...new Set(this.marketplaceTasks.map(task => task.type))];
+
+    const select = document.createElement('select');
+    select.name = 'category-select';
+
+    let options = '<option value="">-- Select a Category --</option>';
+    categories.forEach(category => {
+        options += `<option value="${category}">${category}</option>`;
+    });
+    select.innerHTML = options;
+
+    // Add the dropdown to the form, right after the user dropdown
+    const userSelect = targetForm.querySelector('select[name="user-select"]');
+    userSelect.parentNode.insertBefore(select, userSelect.nextSibling);
 },
 
 /**
@@ -561,7 +605,7 @@ attachEventListeners() {
             const taskId = parseInt(button.dataset.taskId);
             let stateChanged = false;
 
-            if (action === 'reserve') {
+            if (action === 'reserve' && this.appState.role !== 'admin') {
                 if (this.appState.status === 'blocked') {
                     return this.addNotification('Your account is currently suspended. Please contact an administrator.', 'error');
                 }
@@ -582,7 +626,11 @@ attachEventListeners() {
                     this.saveAppState();
                     this.addNotification(`Task "${taskToReserve.description}" reserved successfully!`, 'success');
                 }
-                return; // End here for reserve action
+                return;
+            } else if (action === 'assign-to-user' && this.appState.role === 'admin') {
+                // This handles the "Assign" button on individual marketplace tasks
+                this.handleAssignTaskToUser(taskId);
+                return;
             }
 
             const task = this.appState.tasks ? this.appState.tasks.find(t => t.id === taskId) : null;
@@ -857,6 +905,24 @@ attachEventListeners() {
             this.handleManualAssignTasks(targetUid, amountToAssign);
         });
     }
+
+    const assignByCategoryForm = document.getElementById('assign-by-category-form');
+    if (assignByCategoryForm) {
+        assignByCategoryForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const targetUid = e.target.elements['user-select'].value;
+            const category = e.target.elements['category-select'].value;
+            const amountToAssign = parseInt(e.target.elements['assign-by-category-amount'].value, 10);
+
+            if (!targetUid || !category) {
+                return this.addNotification('Please select a user and a category.', 'error');
+            }
+            if (isNaN(amountToAssign) || amountToAssign <= 0) {
+                return this.addNotification('Please enter a valid number of tasks.', 'error');
+            }
+            this.handleAssignByCategory(targetUid, category, amountToAssign);
+        });
+    }
 },
 
 start(user) {
@@ -877,6 +943,7 @@ start(user) {
                     this.renderPendingTasks();
                     this.populateAdminUserDropdown();
                     this.populateAdminUserDropdown(document.getElementById('manual-assign-form'));
+                    this.populateAdminUserDropdown(document.getElementById('assign-by-category-form'));
                 });
             }
 
@@ -899,6 +966,10 @@ start(user) {
         // Re-render ONLY if the user is currently on the tasks page.
         if (this.dom.pageTasks.classList.contains('active')) {
             this.renderMarketplaceTasks(); 
+        }
+        // Also update category dropdown if admin is on the admin page
+        if (this.appState.role === 'admin' && this.dom.adminPage.classList.contains('active')) {
+            this.populateAdminCategoryDropdown(document.getElementById('assign-by-category-form'));
         }
     });
 },
