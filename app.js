@@ -934,6 +934,8 @@ start(user) {
             // If the user is an admin, set up the listener for all users.
             if (this.appState.role === 'admin') {
                 firebase.database().ref('users').on('value', (allUsersSnapshot) => {
+                    this.allUsers = allUsersSnapshot.val() || {};
+                    // Now that we have all user data, render the admin components.
                     this.renderUserManagementTable();
                     this.renderPendingTasks();
                 });
@@ -941,17 +943,9 @@ start(user) {
 
             this.checkAndResetDailyCounter();
             this.initializeApp();
-
-            // If the user is an admin, set up the listener for all users.
-            if (this.appState.role === 'admin') {
-                firebase.database().ref('users').on('value', (allUsersSnapshot) => {
-                    this.allUsers = allUsersSnapshot.val() || {};
-                });
-            }
         }
     });
 
-    // Add a real-time listener for the current user's data.
     // Listen for marketplace tasks.
     // This listener ONLY updates the state object. It does NOT render pages.
     firebase.database().ref('marketplaceTasks').on('value', (snapshot) => { 
