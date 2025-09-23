@@ -823,10 +823,10 @@ attachEventListeners() {
     this.dom.adminCreditForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const formElements = e.target.elements;
-        const selectedUsername = formElements['user-select'].value;
+        const selectedUid = formElements['user-select'].value;
         const amount = parseInt(e.target.elements['credit-amount'].value, 10);
 
-        if (!selectedUsername) {
+        if (!selectedUid) {
             return this.addNotification('Please select a user to credit.', 'error');
         }
         if (isNaN(amount) || amount <= 0) {
@@ -834,13 +834,13 @@ attachEventListeners() {
         }
 
         // Find the user in the database and update their balance
-        const userToCredit = this.allUsers[selectedUsername];
+        const userToCredit = this.allUsers[selectedUid];
         if (userToCredit) {
             userToCredit.credits = (userToCredit.credits || 0) + amount;
             userToCredit.creditsPurchased = (userToCredit.creditsPurchased || 0) + amount;
             this.updateUserTier.call({ appState: userToCredit }); // Update tier based on new purchase total
             // Save the updated user data back to Firebase
-            firebase.database().ref('users/' + selectedUsername).set(userToCredit);
+            firebase.database().ref('users/' + selectedUid).set(userToCredit);
             this.addNotification(`Admin credit: ${amount} credits have been added to ${userToCredit.name}'s account.`, 'success');
         }
 
