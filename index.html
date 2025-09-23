@@ -237,62 +237,60 @@
 
             <!-- Admin Page -->
             <div id="page-admin" class="page">
-                <section id="admin-panel" class="dashboard-section admin-panel">
-                    <h2>User Management</h2>
-                    <div id="user-management-table">
-                        <!-- User table will be rendered here by JavaScript -->
+                <!-- New Admin Tab Navigation -->
+                <nav class="main-nav" id="admin-sub-nav" style="padding: 0.5rem; margin-bottom: 1.5rem;">
+                    <button data-admin-tab="users" class="active">Users</button>
+                    <button data-admin-tab="tasks">Tasks</button>
+                    <button data-admin-tab="credits">Credits</button>
+                </nav>
+
+                <!-- Admin Tab Content -->
+                <div id="admin-tab-content-container">
+                    <!-- Users Tab -->
+                    <div id="admin-tab-users" class="admin-tab-content active">
+                        <section class="dashboard-section">
+                            <h2>User Management</h2>
+                            <p>Set user account status, daily quotas, and tiers.</p>
+                            <div id="user-management-table"></div>
+                        </section>
                     </div>
 
-                    <h2 style="margin-top: 2rem;">Pending Task Submissions</h2>
-                    <div id="pending-tasks-list">
-                        <!-- Pending tasks for admin review will be rendered here -->
+                    <!-- Tasks Tab -->
+                    <div id="admin-tab-tasks" class="admin-tab-content" style="display: none;">
+                        <section class="dashboard-section">
+                            <h2>Task Generation</h2>
+                            <p>Generate new tasks. These will be added to your private 'Unassigned Pool' on the main Tasks page, ready for you to assign.</p>
+                            <form id="task-generation-form" class="admin-form" style="flex-direction: row; align-items: center; gap: 1rem;">
+                                <label for="generate-tasks-amount" style="margin-bottom: 0;">Number of Tasks (1-100):</label>
+                                <input type="number" id="generate-tasks-amount" name="generate-tasks-amount" value="20" min="1" max="100" style="margin-bottom: 0; width: 80px;">
+                                <button type="submit">Generate New Tasks</button>
+                            </form>
+                        </section>
+                        <section class="dashboard-section">
+                            <h2>Assign Tasks by Category</h2>
+                            <p>Select a user, a task category, and the number of tasks to assign from your pool.</p>
+                            <form id="assign-by-category-form" class="admin-form"></form>
+                        </section>
+                        <section class="dashboard-section">
+                            <h2>Pending Task Submissions</h2>
+                            <p>Approve or reject tasks submitted by users.</p>
+                            <div id="pending-tasks-list"></div>
+                        </section>
                     </div>
 
-                    <h2 style="margin-top: 2rem;">Task Generation</h2>
-                    <p>Generate new tasks for the marketplace using the Google API. This will add to the existing pool of tasks.</p>
-                    <div id="task-generation-controls" class="admin-form" style="flex-direction: row; align-items: center; gap: 1rem;">
-                        <label for="generate-tasks-amount" style="margin-bottom: 0;">Number of Tasks (1-100):</label>
-                        <input type="number" id="generate-tasks-amount" name="generate-tasks-amount" value="20" min="1" max="100" style="margin-bottom: 0; width: 80px;">
-                        <button id="generate-tasks-btn">Generate New Tasks</button>
+                    <!-- Credits Tab -->
+                    <div id="admin-tab-credits" class="admin-tab-content" style="display: none;">
+                        <section class="dashboard-section">
+                            <h2>Credit Account</h2>
+                            <p>Manually add task credits to a user's account. This affects their tier progression.</p>
+                            <form id="admin-credit-form"></form>
+                        </section>
+                        <section class="dashboard-section">
+                            <h2>Fund Account (Balance)</h2>
+                            <p>Manually add withdrawable funds to a user's balance. This does not affect their tier.</p>
+                            <form id="admin-fund-form"></form>
+                        </section>
                     </div>
-
-                    <h2 style="margin-top: 2rem;">Auto-Assign Daily Tasks</h2>
-                    <p>Assign a specific number of tasks from the marketplace to all active users who are below their daily quota.</p>
-                    <form id="auto-assign-form">
-                        <label for="auto-assign-amount">Number of Tasks to Assign</label>
-                        <input type="number" id="auto-assign-amount" name="auto-assign-amount" placeholder="e.g., 10" min="1" required>
-                        <button type="submit">Auto-Assign to All Users</button>
-                    </form>
-
-                    <div class="admin-section" style="margin-top: 2rem;">
-                        <h3>Manually Assign Tasks to a User</h3>
-                        <p>Select a user and specify how many tasks from the marketplace pool you want to assign to them.</p>
-                        <form id="manual-assign-form" class="admin-form">
-                            <!-- The user dropdown will be inserted here by JavaScript -->
-                            <label for="manual-assign-amount">Number of Tasks to Assign:</label>
-                            <input type="number" id="manual-assign-amount" name="manual-assign-amount" min="1" value="5" required>
-                            <button type="submit">Assign Tasks</button>
-                        </form>
-                    </div>
-
-                    <h2 style="margin-top: 2rem;">Credit Account</h2>
-                    <p>This function is for administrators to manually add credits to user accounts.</p>
-                    <form id="admin-credit-form">
-                        <label for="credit-amount">Credits to Add (+)</label>
-                        <input type="number" id="credit-amount" name="credit-amount" placeholder="e.g., 50" step="1" required min="1">
-                        <button type="submit">Add Credits</button>
-                    </form>
-                </section>
-
-                <div class="admin-section" style="margin-top: 2rem;">
-                    <h3>Assign Tasks by Category</h3>
-                    <p>Select a user, a task category, and the number of tasks to assign from the marketplace pool.</p>
-                    <form id="assign-by-category-form" class="admin-form">
-                        <!-- User and category dropdowns will be inserted here by JavaScript -->
-                        <label for="assign-by-category-amount">Number of Tasks to Assign:</label>
-                        <input type="number" id="assign-by-category-amount" name="assign-by-category-amount" min="1" value="5" required>
-                        <button type="submit">Assign Tasks</button>
-                    </form>
                 </div>
             </div>
         </div>
