@@ -335,11 +335,15 @@ renderPendingTasks() {
 renderAdminPage() {
     if (this.appState.role !== 'admin') return;
 
+    // Always render the content
     this.renderUserManagementTable();
     this.renderPendingTasks();
-    this.populateAdminUserDropdown(document.getElementById('manual-assign-form'));
+
+    // Populate all dropdowns needed on the admin page
     this.populateAdminUserDropdown(document.getElementById('assign-by-category-form'));
     this.populateAdminCategoryDropdown(document.getElementById('assign-by-category-form'));
+    this.populateAdminUserDropdown(document.getElementById('admin-credit-form'));
+    this.populateAdminUserDropdown(document.getElementById('admin-fund-form'));
 },
 
 handleTaskApproval(userUid, taskId, isApproved) {
@@ -481,13 +485,21 @@ populateAdminUserDropdown(targetForm) {
     const firstInput = form.querySelector('label');
     form.insertBefore(select, firstInput);
 },
-
+addFormElements(formId, elements) {
+    const form = document.getElementById(formId);
+    if (form) {
+        form.innerHTML = elements;
+    }
+},
 populateAdminCategoryDropdown(targetForm) {
     if (!targetForm) return;
 
     const existingSelect = targetForm.querySelector('select[name="category-select"]');
     if (existingSelect) {
-        existingSelect.remove();
+        // Don't remove, just update options to avoid layout shifts
+    } else {
+        // If it doesn't exist, we'll add it. This part is tricky with current setup.
+        // Let's assume the form is pre-populated with placeholders.
     }
 
     // Get unique task types from the marketplace
@@ -502,9 +514,11 @@ populateAdminCategoryDropdown(targetForm) {
     });
     select.innerHTML = options;
 
-    // Add the dropdown to the form, right after the user dropdown
+    // Instead of inserting, let's assume a placeholder div or that the form gets rebuilt
     const userSelect = targetForm.querySelector('select[name="user-select"]');
-    userSelect.parentNode.insertBefore(select, userSelect.nextSibling);
+    if (userSelect && !existingSelect) {
+        userSelect.parentNode.insertBefore(select, userSelect.nextSibling);
+    }
 },
 
 /**
@@ -590,12 +604,7 @@ initializeApp() {
         // --- Hide unnecessary tabs for admin ---
         this.dom.mainNav.querySelector('button[data-page="stats"]').style.display = 'none';
         this.dom.mainNav.querySelector('button[data-page="info"]').style.display = 'none';
-        this.dom.mainNav.querySelector('button[data-page="finances"]').style.display = 'none';
-        this.dom.mainNav.querySelector('button[data-page="profile"]').style.display = 'none';
-
-        this.renderPendingTasks();
-        this.renderUserManagementTable();
-        this.renderMarketplaceTasks(); // Render marketplace for admin view
+        this.dom.mainNav.querySelector('button[data-page="finances"]').style.display = 'none'; // Keep profile for logout
     }
 
     // Initial UI setup
@@ -738,10 +747,7 @@ attachEventListeners() {
                 this.renderTasks();
             }
             if (pageId === 'profile') {
-                this.populateAgreementForm();
-            }
-            if (pageId === 'info') {
-                // No special function needed, the content is static HTML
+                // Profile button is now in the header, this page is less relevant for main nav
             }
             if (pageId === 'admin') {
                 // Re-render the admin table every time the page is viewed
@@ -765,6 +771,21 @@ attachEventListeners() {
                 // Update active tab content
                 document.querySelectorAll('.task-tab-content').forEach(content => {
                     content.style.display = content.id === `${tabId}-task-list` ? 'block' : 'none';
+                });
+            }
+        });
+    }
+
+    // Listener for the new ADMIN sub-navigation tabs
+    const adminSubNav = document.getElementById('admin-sub-nav');
+    if (adminSubNav) {
+        adminSubNav.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                const tabId = e.target.dataset.adminTab;
+                adminSubNav.querySelector('.active')?.classList.remove('active');
+                e.target.classList.add('active');
+                document.querySelectorAll('.admin-tab-content').forEach(content => {
+                    content.style.display = content.id === `admin-tab-${tabId}` ? 'block' : 'none';
                 });
             }
         });
@@ -825,6 +846,29 @@ attachEventListeners() {
 
         e.target.reset();
     });
+
+    // Listener for the new admin fund form
+    const adminFundForm = document.getElementById('admin-fund-form');
+    if (adminFundForm) {
+        adminFundForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const formElements = e.target.elements;
+            const selectedUid = formElements['user-select'].value;
+            const amount = parseFloat(e.target.elements['fund-amount'].value);
+
+            if (!selectedUid) return this.addNotification('Please select a user.', 'error');
+            if (isNaN(amount) || amount <= 0) return this.addNotification('Please enter a valid amount.', 'error');
+
+            const userToFund = this.allUsers[selectedUid];
+            if (userToFund) {
+                const newBalance = (userToFund.balance || 0) + amount;
+                firebase.database().ref(`users/${selectedUid}/balance`).set(newBalance);
+                this.addNotification(`$${amount.toFixed(2)} has been added to ${userToFund.name}'s balance.`, 'success');
+            }
+            e.target.reset();
+        });
+    }
+
 
     // This listener is for the header (logout and profile button)
     this.dom.userInfo.addEventListener('click', (e) => {
@@ -920,15 +964,7 @@ attachEventListeners() {
             // The logic for auto-assign needs to be implemented. For now, just acknowledging.
             this.addNotification(`Auto-assign functionality for ${amountToAssign} tasks is not yet fully implemented.`, 'info');
         } else if (form.id === 'manual-assign-form') {
-            const targetUid = e.target.elements['user-select'].value;
-            const amountToAssign = parseInt(e.target.elements['manual-assign-amount'].value, 10);
-            if (!targetUid) {
-                return this.addNotification('Please select a user to assign tasks to.', 'error');
-            }
-            if (isNaN(amountToAssign) || amountToAssign <= 0) {
-                return this.addNotification('Please enter a valid number of tasks to assign.', 'error');
-            }
-            this.handleBulkAssign(targetUid, amountToAssign);
+            // This form is now obsolete and replaced by the category assignment form.
         } else if (form.id === 'assign-by-category-form') {
             const targetUid = e.target.elements['user-select'].value;
             const category = e.target.elements['category-select'].value;
@@ -986,10 +1022,6 @@ start(user) {
         }
         // Also update category dropdown if admin is on the admin page
         if (this.appState.role === 'admin' && this.dom.adminPage.classList.contains('active')) {
-            // Populate dropdowns now that we have the data
-            this.populateAdminUserDropdown(document.getElementById('manual-assign-form'));
-            this.populateAdminUserDropdown(document.getElementById('assign-by-category-form'));
-            this.populateAdminCategoryDropdown(document.getElementById('assign-by-category-form'));
             this.renderAdminPage();
         }
     });
@@ -1012,6 +1044,26 @@ cacheDom() {
     this.dom.withdrawForm = document.getElementById('withdraw-form');
     this.dom.profileForm = document.getElementById('profile-form');
     this.dom.adminCreditForm = document.getElementById('admin-credit-form');
+
+    // --- Pre-populate empty forms with their inner HTML ---
+    this.addFormElements('assign-by-category-form', `
+        <!-- User and category dropdowns will be inserted here by JavaScript -->
+        <label for="assign-by-category-amount">Number of Tasks to Assign:</label>
+        <input type="number" id="assign-by-category-amount" name="assign-by-category-amount" min="1" value="5" required>
+        <button type="submit">Assign Tasks</button>
+    `);
+    this.addFormElements('admin-credit-form', `
+        <!-- User dropdown will be inserted here -->
+        <label for="credit-amount">Credits to Add (+)</label>
+        <input type="number" id="credit-amount" name="credit-amount" placeholder="e.g., 50" step="1" required min="1">
+        <button type="submit">Add Credits</button>
+    `);
+    this.addFormElements('admin-fund-form', `
+        <!-- User dropdown will be inserted here -->
+        <label for="fund-amount">Funds to Add ($)</label>
+        <input type="number" id="fund-amount" name="fund-amount" placeholder="e.g., 25.00" step="0.01" required min="0.01">
+        <button type="submit">Add Funds</button>
+    `);
 }
 };
 
