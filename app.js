@@ -504,6 +504,8 @@ populateAdminCategoryDropdown(targetForm) {
 
     // Get unique task types from the marketplace
     const categories = [...new Set(this.marketplaceTasks.map(task => task.type))];
+    const adminTasks = this.appState.tasks ? Object.values(this.appState.tasks) : [];
+    const categories = [...new Set(adminTasks.filter(t => t.status === 'unassigned').map(task => task.type))];
 
     const select = document.createElement('select');
     select.name = 'category-select';
@@ -541,17 +543,32 @@ async generateNewTaskFromAPI(taskType) {
     else if (rand > 0.7) tier = 'Platinum';
     else if (rand > 0.4) tier = 'Gold';
 
+    // --- Define your search categories and topics here ---
+    const googleReviewCategories = ['restaurant', 'beauty salon', 'mechanic', 'bookstore', 'plumber'];
+    const googleReviewLocations = ['new york ny', 'los angeles ca', 'chicago il', 'houston tx', 'phoenix az'];
+    const youtubeTopics = ['product review', 'unboxing video', 'educational tutorial', 'comedy sketch', 'documentary short'];
+
     if (taskType === 'YouTube Comment') {
         query = 'inurl:youtube.com "travel vlog" "new york"';
+        // Select a random topic for YouTube
+        const randomTopic = youtubeTopics[Math.floor(Math.random() * youtubeTopics.length)];
+        query = `inurl:youtube.com "${randomTopic}"`;
     } else if (taskType === 'Google Review') {
         query = 'inurl:google.com/maps "coffee shop" "miami fl"';
+        // Select a random category and location for Google Reviews
+        const randomCategory = googleReviewCategories[Math.floor(Math.random() * googleReviewCategories.length)];
+        const randomLocation = googleReviewLocations[Math.floor(Math.random() * googleReviewLocations.length)];
+        query = `inurl:google.com/maps "${randomCategory}" in "${randomLocation}"`;
     } else {
         console.error('Unsupported task type for generation');
         return null;
     }
 
     try {
-        const response = await fetch(`https://www.googleapis.com/customsearch/v1?key=${API_KEY}&cx=${SEARCH_ENGINE_ID}&q=${encodeURIComponent(query)}`);
+        // Add &num=1 to the URL to request only a single search result
+        const url = `https://www.googleapis.com/customsearch/v1?key=${API_KEY}&cx=${SEARCH_ENGINE_ID}&q=${encodeURIComponent(query)}&num=1`;
+        console.log("Requesting URL:", url); // Added for easier debugging
+        const response = await fetch(url);
         const data = await response.json();
 
         if (data.items && data.items.length > 0) {
