@@ -578,7 +578,7 @@ async generateNewTaskFromAPI(taskType) {
                 link: firstResult.link, 
                 instructions: `Please leave a positive and relevant ${taskType.toLowerCase()}.`,
                 tier: tier,
-                status: 'available'
+                status: 'unassigned'
             };
             return newTask;
         }
