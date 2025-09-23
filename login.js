@@ -25,23 +25,27 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             // If it fails, check if it might be a username
             if (error.code === 'auth/invalid-email' || error.code === 'auth/user-not-found') {
-                try {
-                    // Query the database to find a user with a matching username
-                    const usersRef = firebase.database().ref('users');
-                    const snapshot = await usersRef.orderByChild('name').equalTo(identifier).once('value');
-                    const users = snapshot.val();
+                // Query the database to find a user with a matching username
+                const usersRef = firebase.database().ref('users');
+                const snapshot = await usersRef.orderByChild('name').equalTo(identifier).once('value');
+                const users = snapshot.val();
 
-                    if (users) {
-                        const userKey = Object.keys(users)[0];
-                        const userEmail = users[userKey].email;
+                if (users) {
+                    const userKey = Object.keys(users)[0];
+                    const userEmail = users[userKey].email;
+                    try {
                         // Try logging in with the found email
                         await attemptLogin(userEmail);
                         window.location.replace('index.html');
-                    } else {
-                        // If no user is found by username either, it's an invalid login
-                        showNotification('Invalid email/username or password.', 'error');
+                    } catch (finalError) {
+                        if (finalError.code === 'auth/wrong-password') {
+                            showNotification('Incorrect password for that username. Please try again.', 'error');
+                        } else {
+                            showNotification('Invalid email/username or password.', 'error');
+                        }
                     }
-                } catch (finalError) {
+                } else {
+                    // If no user is found by username either, it's an invalid login
                     showNotification('Invalid email/username or password.', 'error');
                 }
             } else {
