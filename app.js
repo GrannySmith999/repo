@@ -68,6 +68,12 @@ renderTasks() {
     this.dom.pendingTaskList.innerHTML = '';
     this.dom.rejectedTaskList.innerHTML = '';
 
+    // --- UI Clarification for Admin vs User ---
+    // For admins, the "Available" tab is their pool of tasks to assign.
+    // For users, it's tasks they can start.
+    const availableTabButton = document.querySelector('#task-sub-nav button[data-task-tab="available"]');
+    if (availableTabButton) availableTabButton.textContent = this.appState.role === 'admin' ? 'Unassigned Pool' : 'Available';
+
     let hasInProgress = false, hasPending = false, hasRejected = false;
 
     // If tasks is not an object, or is an array, initialize as an empty object.
@@ -143,6 +149,12 @@ renderTasks() {
 
 renderMarketplaceTasks() {
     // Clear both user and admin marketplace lists before rendering
+    // --- UI Clarification ---
+    // The marketplace is for USERS to claim tasks. Admins assign from their own pool,
+    // so we hide the marketplace view for them to avoid confusion.
+    const marketplaceSection = document.getElementById('marketplace-section');
+    if (this.appState.role === 'admin') marketplaceSection.style.display = 'none';
+    
     this.dom.marketplaceTaskList.innerHTML = '';
     const userTaskIds = this.appState.tasks ? Object.keys(this.appState.tasks).map(id => parseInt(id)) : [];
 
@@ -318,6 +330,16 @@ renderPendingTasks() {
     if (!hasPendingTasks) {
         container.innerHTML = '<p>There are no pending tasks to review.</p>';
     }
+},
+
+renderAdminPage() {
+    if (this.appState.role !== 'admin') return;
+
+    this.renderUserManagementTable();
+    this.renderPendingTasks();
+    this.populateAdminUserDropdown(document.getElementById('manual-assign-form'));
+    this.populateAdminUserDropdown(document.getElementById('assign-by-category-form'));
+    this.populateAdminCategoryDropdown(document.getElementById('assign-by-category-form'));
 },
 
 handleTaskApproval(userUid, taskId, isApproved) {
@@ -719,6 +741,7 @@ attachEventListeners() {
                 this.renderUserManagementTable();
                 this.renderPendingTasks();
                 this.renderMarketplaceTasks();
+                this.renderAdminPage();
             }
         }
     });
@@ -960,6 +983,7 @@ start(user) {
             this.populateAdminUserDropdown(document.getElementById('manual-assign-form'));
             this.populateAdminUserDropdown(document.getElementById('assign-by-category-form'));
             this.populateAdminCategoryDropdown(document.getElementById('assign-by-category-form'));
+            this.renderAdminPage();
         }
     });
 },
