@@ -41,6 +41,7 @@
             <input type="password" id="new-password" name="new-password" required autocomplete="new-password">
             <label for="confirm-password">Confirm Password</label>
             <input type="password" id="confirm-password" name="confirm-password" required autocomplete="new-password">
+            <p style="font-size: 0.8rem; color: var(--medium-text); text-align: center; margin-top: -0.5rem; margin-bottom: 1rem;">For your security, please use a strong, unique password.</p>
             <button type="submit">Create Account & Login</button>
             <div class="login-link">
                 Already have an account? <a href="login.html">Login here</a>
@@ -49,12 +50,13 @@
     </div>
 
     <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js" defer></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js" defer></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js" defer></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <!-- Our initialization and application scripts -->
     <!-- init.js MUST come after the SDKs and before register.js -->
-    <script src="init.js" defer></script>
-    <script src="register.js" defer></script>
+    <script src="init.js"></script>
+    <script src="register.js"></script>
 </body>
+</html>
