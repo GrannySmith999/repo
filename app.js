@@ -543,7 +543,8 @@ async generateNewTaskFromAPI(taskType) {
         if (data.items && data.items.length > 0) {
             const firstResult = data.items[0]; // Get the first search result
             const newTask = {
-                id: Date.now(),
+                // Use a more unique ID to prevent collisions when generating tasks quickly
+                id: Date.now() + Math.floor(Math.random() * 1000),
                 type: taskType,
                 description: `Perform a task for: ${firstResult.title}`,
                 link: firstResult.link, 
@@ -586,6 +587,12 @@ initializeApp() {
     if (this.appState.role === 'admin') {
         this.dom.userInfo.querySelector('span:first-child').textContent += ' (Admin)'; // Add admin tag to welcome message
         this.dom.mainNav.querySelector('button[data-page="admin"]').style.display = 'inline-block'; // Show the Admin button in the nav
+        // --- Hide unnecessary tabs for admin ---
+        this.dom.mainNav.querySelector('button[data-page="stats"]').style.display = 'none';
+        this.dom.mainNav.querySelector('button[data-page="info"]').style.display = 'none';
+        this.dom.mainNav.querySelector('button[data-page="finances"]').style.display = 'none';
+        this.dom.mainNav.querySelector('button[data-page="profile"]').style.display = 'none';
+
         this.renderPendingTasks();
         this.renderUserManagementTable();
         this.renderMarketplaceTasks(); // Render marketplace for admin view
