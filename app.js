@@ -529,8 +529,9 @@ populateAdminCategoryDropdown(targetForm) {
  * @returns {Promise<object|null>} A new task object or null if generation fails.
  */
 async generateNewTaskFromAPI(taskType) {
+async generateNewTaskFromAPI(taskType, category, location) {
     // In a real implementation, you would get these from a secure place.
-    const API_KEY = 'AIzaSyArtyLtVTenPgdI6n5FfuXVZlHVqXk56Fo'; // Your actual API key.
+    const API_KEY = 'AIzaSyDYcHahEotRafzgRUXLyx1-hDM_WkxdZhs'; // Your Google Custom Search API Key
     const SEARCH_ENGINE_ID = '814c00fbd2f1544e6'; // Your Search Engine ID
 
     let query = '';
@@ -551,11 +552,13 @@ async generateNewTaskFromAPI(taskType) {
         // Select a random topic for YouTube
         const randomTopic = youtubeTopics[Math.floor(Math.random() * youtubeTopics.length)];
         query = `inurl:youtube.com "${randomTopic}"`;
+        query = `inurl:youtube.com "${category}"`;
     } else if (taskType === 'Google Review') {
         // Select a random category and location for Google Reviews
         const randomCategory = googleReviewCategories[Math.floor(Math.random() * googleReviewCategories.length)];
         const randomLocation = googleReviewLocations[Math.floor(Math.random() * googleReviewLocations.length)];
         query = `inurl:google.com/maps "${randomCategory}" in "${randomLocation}"`;
+        query = `inurl:google.com/maps "${category}" in "${location || ''}"`;
     } else {
         console.error('Unsupported task type for generation');
         return null;
@@ -935,10 +938,14 @@ attachEventListeners() {
         const form = e.target;
 
         if (form.id === 'task-generation-form') {
+            const category = document.getElementById('generate-task-category').value;
+            const location = document.getElementById('generate-task-location').value;
             const numToGenerate = parseInt(document.getElementById('generate-tasks-amount').value, 10);
+
             if (isNaN(numToGenerate) || numToGenerate < 1 || numToGenerate > 100) {
                 return this.addNotification('Please enter a number between 1 and 100.', 'error');
             }
+            if (!category) return this.addNotification('Please enter a category or topic to search for.', 'error');
 
             // --- Add loading state to the button ---
             console.log('Starting task generation...');
@@ -950,6 +957,10 @@ attachEventListeners() {
             const newTasksPromises = [];
             for (let i = 0; i < Math.ceil(numToGenerate / 2); i++) {
                 newTasksPromises.push(this.generateNewTaskFromAPI('YouTube Comment'));
+            // Determine task type based on whether a location was provided
+            const taskType = location ? 'Google Review' : 'YouTube Comment';
+            for (let i = 0; i < numToGenerate; i++) {
+                newTasksPromises.push(this.generateNewTaskFromAPI(taskType, category, location));
             }
             for (let i = 0; i < Math.floor(numToGenerate / 2); i++) {
                 newTasksPromises.push(this.generateNewTaskFromAPI('Google Review'));
