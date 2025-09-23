@@ -503,7 +503,6 @@ populateAdminCategoryDropdown(targetForm) {
     }
 
     // Get unique task types from the marketplace
-    const categories = [...new Set(this.marketplaceTasks.map(task => task.type))];
     const adminTasks = this.appState.tasks ? Object.values(this.appState.tasks) : [];
     const categories = [...new Set(adminTasks.filter(t => t.status === 'unassigned').map(task => task.type))];
 
@@ -532,7 +531,7 @@ populateAdminCategoryDropdown(targetForm) {
 async generateNewTaskFromAPI(taskType) {
     // In a real implementation, you would get these from a secure place.
     const API_KEY = 'AIzaSyArtyLtVTenPgdI6n5FfuXVZlHVqXk56Fo'; // Your actual API key.
-    const SEARCH_ENGINE_ID = '01efd7843a7744ad0'; // Your Search Engine ID
+    const SEARCH_ENGINE_ID = '814c00fbd2f1544e6'; // Your Search Engine ID
 
     let query = '';
     let tier = 'Basic'; // Default tier
@@ -549,12 +548,10 @@ async generateNewTaskFromAPI(taskType) {
     const youtubeTopics = ['product review', 'unboxing video', 'educational tutorial', 'comedy sketch', 'documentary short'];
 
     if (taskType === 'YouTube Comment') {
-        query = 'inurl:youtube.com "travel vlog" "new york"';
         // Select a random topic for YouTube
         const randomTopic = youtubeTopics[Math.floor(Math.random() * youtubeTopics.length)];
         query = `inurl:youtube.com "${randomTopic}"`;
     } else if (taskType === 'Google Review') {
-        query = 'inurl:google.com/maps "coffee shop" "miami fl"';
         // Select a random category and location for Google Reviews
         const randomCategory = googleReviewCategories[Math.floor(Math.random() * googleReviewCategories.length)];
         const randomLocation = googleReviewLocations[Math.floor(Math.random() * googleReviewLocations.length)];
