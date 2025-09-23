@@ -550,14 +550,9 @@ async generateNewTaskFromAPI(taskType, category, location) {
 
     if (taskType === 'YouTube Comment') {
         // Select a random topic for YouTube
-        const randomTopic = youtubeTopics[Math.floor(Math.random() * youtubeTopics.length)];
-        query = `inurl:youtube.com "${randomTopic}"`;
         query = `inurl:youtube.com "${category}"`;
     } else if (taskType === 'Google Review') {
         // Select a random category and location for Google Reviews
-        const randomCategory = googleReviewCategories[Math.floor(Math.random() * googleReviewCategories.length)];
-        const randomLocation = googleReviewLocations[Math.floor(Math.random() * googleReviewLocations.length)];
-        query = `inurl:google.com/maps "${randomCategory}" in "${randomLocation}"`;
         query = `inurl:google.com/maps "${category}" in "${location || ''}"`;
     } else {
         console.error('Unsupported task type for generation');
