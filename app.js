@@ -932,9 +932,10 @@ start(user) {
 
             // If the user is an admin, set up the listener for all users.
             if (this.appState.role === 'admin') {
+                // This listener will now handle rendering the admin-specific components
+                // once the data is available, solving the race condition.
                 firebase.database().ref('users').on('value', (allUsersSnapshot) => {
                     this.allUsers = allUsersSnapshot.val() || {};
-                    // Now that we have all user data, render the admin components.
                     this.renderUserManagementTable();
                     this.renderPendingTasks();
                 });
