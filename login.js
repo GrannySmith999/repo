@@ -46,7 +46,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         showNotification('Invalid email/username or password.', 'error');
                     }
                 } catch (finalError) {
-                    showNotification('Incorrect password for that username. Please try again.', 'error');
+                    if (finalError.code === 'auth/wrong-password') {
+                        showNotification('Incorrect password for that username. Please try again.', 'error');
+                    } else {
+                        showNotification('An unexpected error occurred. Please try again.', 'error');
+                        console.error("Secondary Login Error:", finalError);
+                    }
                 }
             } else {
                 // Handle other potential Firebase auth errors
