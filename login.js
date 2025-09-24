@@ -23,33 +23,35 @@ document.addEventListener('DOMContentLoaded', () => {
             await attemptLogin(identifier.toLowerCase());
             window.location.replace('index.html');
         } catch (error) {
-            // If it fails, check if it might be a username
-            if (error.code === 'auth/invalid-email' || error.code === 'auth/user-not-found') {
-                // Query the database to find a user with a matching username
-                const usersRef = firebase.database().ref('users');
-                const snapshot = await usersRef.orderByChild('name').equalTo(identifier).once('value');
-                const users = snapshot.val();
+            // First, handle the most common error: correct email but wrong password.
+            if (error.code === 'auth/wrong-password') {
+                return showNotification('Incorrect password for that email. Please try again.', 'error');
+            } 
+            // If the email itself is bad, then check if it might be a username.
+            else if (error.code === 'auth/invalid-email' || error.code === 'auth/user-not-found') {
+                try {
+                    // Query the database to find a user with a matching username
+                    const usersRef = firebase.database().ref('users');
+                    const snapshot = await usersRef.orderByChild('name').equalTo(identifier).once('value');
+                    const users = snapshot.val();
 
-                if (users) {
-                    const userKey = Object.keys(users)[0];
-                    const userEmail = users[userKey].email;
-                    try {
+                    if (users) {
+                        const userKey = Object.keys(users)[0];
+                        const userEmail = users[userKey].email;
                         // Try logging in with the found email
                         await attemptLogin(userEmail);
                         window.location.replace('index.html');
-                    } catch (finalError) {
-                        if (finalError.code === 'auth/wrong-password') {
-                            showNotification('Incorrect password for that username. Please try again.', 'error');
-                        } else {
-                            showNotification('Invalid email/username or password.', 'error');
-                        }
+                    } else {
+                        // If no user is found by username either, it's an invalid login
+                        showNotification('Invalid email/username or password.', 'error');
                     }
-                } else {
-                    // If no user is found by username either, it's an invalid login
-                    showNotification('Invalid email/username or password.', 'error');
+                } catch (finalError) {
+                    showNotification('Incorrect password for that username. Please try again.', 'error');
                 }
             } else {
-                showNotification('Invalid email/username or password.', 'error');
+                // Handle other potential Firebase auth errors
+                showNotification('An unexpected error occurred during login. Please try again.', 'error');
+                console.error("Login Error:", error);
             }
         }
     });
