@@ -520,11 +520,6 @@ async generateNewTaskFromAPI(taskType, category, location, API_KEY) {
     else if (rand > 0.7) tier = 'Platinum';
     else if (rand > 0.4) tier = 'Gold';
 
-    // --- Define your search categories and topics here ---
-    const googleReviewCategories = ['restaurant', 'beauty salon', 'mechanic', 'bookstore', 'plumber'];
-    const googleReviewLocations = ['new york ny', 'los angeles ca', 'chicago il', 'houston tx', 'phoenix az'];
-    const youtubeTopics = ['product review', 'unboxing video', 'educational tutorial', 'comedy sketch', 'documentary short'];
-
     if (taskType === 'YouTube Comment') {
         // Select a random topic for YouTube
         query = `inurl:youtube.com "${category}"`;
