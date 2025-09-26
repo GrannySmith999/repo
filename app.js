@@ -438,8 +438,9 @@ handleAssignByCategory(targetUid, category, amountToAssign) {
     }
 
     // Filter marketplace tasks by the selected category and ensure the user doesn't already have them.
-    const userTaskIds = targetUser.tasks ? Object.keys(targetUser.tasks).map(id => parseInt(id)) : []; // This was already correct
-    const availableMarketplaceTasks = this.marketplaceTasks.filter(task => task.type === category && !userTaskIds.includes(task.id));
+    const userTaskIds = targetUser.tasks ? Object.keys(targetUser.tasks).map(id => parseInt(id)) : [];
+    const adminTasks = this.appState.tasks ? Object.values(this.appState.tasks) : [];
+    const availableMarketplaceTasks = adminTasks.filter(task => task.status === 'unassigned' && task.type === category && !userTaskIds.includes(task.id));
 
     if (availableMarketplaceTasks.length < amountToAssign) {
         return this.addNotification(`Not enough unique tasks in the '${category}' category. Only ${availableMarketplaceTasks.length} available.`, 'error');
