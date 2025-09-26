@@ -49,8 +49,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 dailyTaskQuota: 5,
                 lastActivityDate: new Date().toISOString().split('T')[0],
                 balance: 0.00,
-                tasks: [],
-                history: []
+                tasks: {},
+                history: {}
             };
 
             // The user's unique ID (uid) from Firebase Auth is used as the key in the database
@@ -78,4 +78,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const title = type.charAt(0).toUpperCase() + type.slice(1);
         notification.className = `notification ${type}`;
         notification.innerHTML = `<strong>${title}:</strong> ${message}`;
-   
+        notificationArea.appendChild(notification);
+    }
+});
