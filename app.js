@@ -68,11 +68,7 @@ renderTasks() {
     this.dom.pendingTaskList.innerHTML = '';
     this.dom.rejectedTaskList.innerHTML = '';
 
-    // --- UI Clarification for Admin vs User ---
-    // For admins, the "Available" tab is their pool of tasks to assign.
-    // For users, it's tasks they can start.
-    const availableTabButton = document.querySelector('#task-sub-nav button[data-task-tab="available"]');
-    if (availableTabButton) availableTabButton.textContent = this.appState.role === 'admin' ? 'Unassigned Pool' : 'Available';
+    document.querySelector('#task-sub-nav button[data-task-tab="available"]').textContent = 'Available';
 
     let hasInProgress = false, hasPending = false, hasRejected = false;
 
@@ -93,11 +89,6 @@ renderTasks() {
             statusBadge = `<span class="status-badge" style="background-color: var(--success-color);">Available</span>`;
             taskContent = `<p>This task is ready for you to start!</p><div class="task-actions"><button data-task-id="${task.id}" data-action="start">Start Task (${this.getCurrentTierInfo().creditCost} Credits)</button></div>`;
             targetList = this.dom.availableTaskList;
-        } else if (task.status === 'unassigned' && this.appState.role === 'admin') {
-            // Special view for admins to see tasks they can assign
-            statusBadge = `<span class="status-badge" style="background-color: #555;">Unassigned</span>`;
-            taskContent = `<p>This task is in your pool to be assigned to a user.</p><div class="task-actions"><button data-task-id="${task.id}" data-action="assign-to-user" class="assign-btn">Assign to User</button></div>`;
-            targetList = document.getElementById('admin-task-pool-list'); // <<< The ONLY place unassigned tasks should go.
         } else if (task.status === 'started') {
             statusBadge = `<span class="status-badge" style="background-color: #f0ad4e;">In Progress</span>`;
             taskContent = `
@@ -342,18 +333,42 @@ renderAdminPage() {
     // Always render the content
     this.renderUserManagementTable();
     this.renderPendingTasks();
-
-    // Clear and re-render the admin's personal task pool on the admin page
-    const adminPoolList = document.getElementById('admin-task-pool-list');
-    if (adminPoolList) {
-        adminPoolList.innerHTML = '';
-    }
+    this.renderAdminTaskPool();
 
     // Populate all dropdowns needed on the admin page
     this.populateAdminUserDropdown(document.getElementById('assign-by-category-form'));
     this.populateAdminUserDropdown(document.getElementById('admin-credit-form'));
     this.populateAdminUserDropdown(document.getElementById('admin-fund-form'));
     this.populateAdminCategoryDropdown(document.getElementById('assign-by-category-form'));
+},
+
+renderAdminTaskPool() {
+    const adminPoolList = document.getElementById('admin-task-pool-list');
+    if (!adminPoolList) return;
+
+    adminPoolList.innerHTML = ''; // Clear the list first
+
+    if (typeof this.appState.tasks !== 'object' || this.appState.tasks === null) return;
+
+    const unassignedTasks = Object.values(this.appState.tasks).filter(task => task.status === 'unassigned');
+
+    if (unassignedTasks.length === 0) {
+        adminPoolList.innerHTML = '<p>Your assignment pool is empty. Generate new tasks to get started.</p>';
+        return;
+    }
+
+    unassignedTasks.forEach(task => {
+        const taskEl = document.createElement('div');
+        taskEl.className = 'task';
+        taskEl.innerHTML = `
+            <div class="task-info">
+                <h4>${task.type}</h4>
+                <p>${task.description}</p>
+                <div class="task-actions"><button data-task-id="${task.id}" data-action="assign-to-user" class="assign-btn">Assign to User</button></div>
+            </div>
+        `;
+        adminPoolList.appendChild(taskEl);
+    });
 },
 
 handleTaskApproval(userUid, taskId, isApproved) {
@@ -997,7 +1012,7 @@ start(user) {
         // --- This is the key fix ---
         // Whenever the user's data changes (e.g., new tasks are added),
         // re-render their personal task lists. This will update the admin's pool view.
-        this.renderTasks();
+        if (this.appState.role === 'admin') this.renderAdminTaskPool();
 
         this.updateBalanceUI(); // Always keep balance updated
 
