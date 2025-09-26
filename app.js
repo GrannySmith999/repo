@@ -487,10 +487,6 @@ populateAdminCategoryDropdown(targetForm) {
     
     select.innerHTML = options; // Populate with the latest categories
 
-    const userSelect = targetForm.querySelector('select[name="user-select"]');
-    if (userSelect && !existingSelect) {
-        userSelect.parentNode.insertBefore(select, userSelect.nextSibling);
-    }
 },
 
 /**
