@@ -85,6 +85,8 @@ renderTasks() {
         const taskEl = document.createElement('div');
         taskEl.className = `task status-${task.status}`; // Add status-specific class
 
+        let statusBadge = '';
+        let taskContent = '';
         let targetList = null;
 
         if (task.status === 'available') {
@@ -145,9 +147,11 @@ renderTasks() {
     });
 
     if (!hasInProgress) {
+    // Check if there are any tasks in the 'available' list before showing a message.
+    if (this.dom.availableTaskList.children.length === 0) {
         const message = this.appState.credits === 0 
             ? '<p>You have no credits. Please contact your supervisor to get credits and start working.</p>'
-            : '<p>You have no available tasks. Reserve one from the marketplace!</p>';
+            : '<p>You have no available tasks to start. You can reserve one from the marketplace if available.</p>';
         this.dom.availableTaskList.innerHTML = message;
     }
     if (!hasPending) this.dom.pendingTaskList.innerHTML = '<p>You have no tasks pending review or approved.</p>';
@@ -522,10 +526,10 @@ async generateNewTaskFromAPI(taskType, category, location, API_KEY) {
 
     if (taskType === 'YouTube Comment') {
         // Select a random topic for YouTube
-        query = `inurl:youtube.com "${category}"`;
+        query = `"${category}"`;
     } else if (taskType === 'Google Review') {
         // Select a random category and location for Google Reviews
-        query = `inurl:google.com/maps "${category}" in "${location || ''}"`;
+        query = `"${category}" in "${location || ''}"`;
     } else {
         console.error('Unsupported task type for generation');
         return null;
