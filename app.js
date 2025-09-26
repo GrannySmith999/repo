@@ -96,6 +96,13 @@ renderTasks() {
             statusBadge = `<span class="status-badge" style="background-color: #555;">Unassigned</span>`;
             taskContent = `<p>This task is in your pool to be assigned to a user.</p><div class="task-actions"><button data-task-id="${task.id}" data-action="assign-to-user" class="assign-btn">Assign to User</button></div>`;
             targetList = this.dom.availableTaskList; // Show in the 'Available' tab for admins
+
+            // Also render to the new admin task pool on the admin page
+            const adminPoolList = document.getElementById('admin-task-pool-list');
+            if (adminPoolList) {
+                const adminTaskEl = taskEl.cloneNode(true); // Create a copy for the admin page
+                adminPoolList.appendChild(adminTaskEl);
+            }
         } else if (task.status === 'started') {
             statusBadge = `<span class="status-badge" style="background-color: #f0ad4e;">In Progress</span>`;
             taskContent = `
@@ -339,6 +346,12 @@ renderAdminPage() {
     this.renderUserManagementTable();
     this.renderPendingTasks();
 
+    // Clear and re-render the admin's personal task pool on the admin page
+    const adminPoolList = document.getElementById('admin-task-pool-list');
+    if (adminPoolList) {
+        adminPoolList.innerHTML = '';
+    }
+
     // Populate all dropdowns needed on the admin page
     this.populateAdminUserDropdown(document.getElementById('assign-by-category-form'));
     this.populateAdminUserDropdown(document.getElementById('admin-credit-form'));
@@ -529,6 +542,9 @@ async generateNewTaskFromAPI(taskType, category, location, API_KEY) {
         console.log("Requesting URL:", url); // Added for easier debugging
         const response = await fetch(url);
         const data = await response.json();
+
+        // --- Add this line for better debugging ---
+        console.log("Google API Response:", data);
 
         if (data.items && data.items.length > 0) {
             const firstResult = data.items[0]; // Get the first search result
