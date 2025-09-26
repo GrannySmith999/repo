@@ -341,9 +341,9 @@ renderAdminPage() {
 
     // Populate all dropdowns needed on the admin page
     this.populateAdminUserDropdown(document.getElementById('assign-by-category-form'));
-    this.populateAdminCategoryDropdown(document.getElementById('assign-by-category-form'));
     this.populateAdminUserDropdown(document.getElementById('admin-credit-form'));
     this.populateAdminUserDropdown(document.getElementById('admin-fund-form'));
+    this.populateAdminCategoryDropdown(document.getElementById('assign-by-category-form'));
 },
 
 handleTaskApproval(userUid, taskId, isApproved) {
@@ -431,33 +431,6 @@ handleBulkAssign(targetUid, amountToAssign, category = null) {
     this.addNotification(`Successfully assigned ${amountToAssign} tasks to ${targetUser.name}.`, 'success');
 },
 
-handleAssignByCategory(targetUid, category, amountToAssign) {
-    const targetUser = this.allUsers[targetUid];
-    if (!targetUser) {
-        return this.addNotification('User not found.', 'error');
-    }
-
-    // Filter marketplace tasks by the selected category and ensure the user doesn't already have them.
-    const userTaskIds = targetUser.tasks ? Object.keys(targetUser.tasks).map(id => parseInt(id)) : [];
-    const adminTasks = this.appState.tasks ? Object.values(this.appState.tasks) : [];
-    const availableMarketplaceTasks = adminTasks.filter(task => task.status === 'unassigned' && task.type === category && !userTaskIds.includes(task.id));
-
-    if (availableMarketplaceTasks.length < amountToAssign) {
-        return this.addNotification(`Not enough unique tasks in the '${category}' category. Only ${availableMarketplaceTasks.length} available.`, 'error');
-    }
-
-    const tasksToAssign = availableMarketplaceTasks.slice(0, amountToAssign);
-    const updates = {};
-    tasksToAssign.forEach(task => {
-        // Add each new task to the updates object
-        updates[`/users/${targetUid}/tasks/${task.id}`] = { ...task, status: 'available' };
-    });
-
-    // Perform a single multi-path update
-    firebase.database().ref().update(updates);
-
-    this.addNotification(`Successfully assigned ${amountToAssign} '${category}' tasks to ${targetUser.name}.`, 'success');
-},
 // --- Initialization Function ---
 populateAdminUserDropdown(targetForm) {
     // Default to the credit form if no specific form is provided.
@@ -994,7 +967,7 @@ attachEventListeners() {
             if (isNaN(amountToAssign) || amountToAssign <= 0) {
                 return this.addNotification('Please enter a valid number of tasks.', 'error');
             }
-            this.handleBulkAssign(targetUid, amountToAssign, category);
+            this.handleBulkAssign(targetUid, amountToAssign, category); // Use the more generic bulk assign function
         }
     });
 },
