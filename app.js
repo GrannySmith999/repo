@@ -97,14 +97,7 @@ renderTasks() {
             // Special view for admins to see tasks they can assign
             statusBadge = `<span class="status-badge" style="background-color: #555;">Unassigned</span>`;
             taskContent = `<p>This task is in your pool to be assigned to a user.</p><div class="task-actions"><button data-task-id="${task.id}" data-action="assign-to-user" class="assign-btn">Assign to User</button></div>`;
-            targetList = this.dom.availableTaskList; // Show in the 'Available' tab for admins
-
-            // Also render to the new admin task pool on the admin page
-            const adminPoolList = document.getElementById('admin-task-pool-list');
-            if (adminPoolList) {
-                const adminTaskEl = taskEl.cloneNode(true); // Create a copy for the admin page
-                adminPoolList.appendChild(adminTaskEl);
-            }
+            targetList = document.getElementById('admin-task-pool-list'); // <<< The ONLY place unassigned tasks should go.
         } else if (task.status === 'started') {
             statusBadge = `<span class="status-badge" style="background-color: #f0ad4e;">In Progress</span>`;
             taskContent = `
@@ -144,14 +137,6 @@ renderTasks() {
             </div>
         `;
         if (targetList) targetList.appendChild(taskEl);
-
-        // If the task is unassigned, also render it to the admin's pool on the admin page.
-        if (task.status === 'unassigned' && this.appState.role === 'admin') {
-            const adminPoolList = document.getElementById('admin-task-pool-list');
-            if (adminPoolList) {
-                adminPoolList.appendChild(taskEl.cloneNode(true));
-            }
-        }
     });
 
     // Check if there are any tasks in the 'available' list before showing a message.
