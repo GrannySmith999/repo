@@ -144,6 +144,14 @@ renderTasks() {
             </div>
         `;
         if (targetList) targetList.appendChild(taskEl);
+
+        // If the task is unassigned, also render it to the admin's pool on the admin page.
+        if (task.status === 'unassigned' && this.appState.role === 'admin') {
+            const adminPoolList = document.getElementById('admin-task-pool-list');
+            if (adminPoolList) {
+                adminPoolList.appendChild(taskEl.cloneNode(true));
+            }
+        }
     });
 
     // Check if there are any tasks in the 'available' list before showing a message.
@@ -512,7 +520,7 @@ populateAdminCategoryDropdown(targetForm) {
  * @param {string} taskType - The type of task to generate (e.g., 'YouTube Comment').
  * @returns {Promise<object|null>} A new task object or null if generation fails.
  */
-async generateNewTaskFromAPI(taskType, category, location, API_KEY) {
+async generateNewTaskFromAPI(taskType, category, location, API_KEY, numResults = 1, startIndex = 1) {
     const SEARCH_ENGINE_ID = '814c00fbd2f1544e6'; // Your Search Engine ID
 
     let query = '';
@@ -537,7 +545,8 @@ async generateNewTaskFromAPI(taskType, category, location, API_KEY) {
 
     try {
         // Add &num=1 to the URL to request only a single search result
-        const url = `https://www.googleapis.com/customsearch/v1?key=${API_KEY}&cx=${SEARCH_ENGINE_ID}&q=${encodeURIComponent(query)}&num=1`;
+        // Add &gl=us to strongly bias results towards the United States
+        const url = `https://www.googleapis.com/customsearch/v1?key=${API_KEY}&cx=${SEARCH_ENGINE_ID}&q=${encodeURIComponent(query)}&num=${numResults}&start=${startIndex}&gl=us`;
         console.log("Requesting URL:", url); // Added for easier debugging
         const response = await fetch(url);
         const data = await response.json();
@@ -546,18 +555,20 @@ async generateNewTaskFromAPI(taskType, category, location, API_KEY) {
         console.log("Google API Response:", data);
 
         if (data.items && data.items.length > 0) {
-            const firstResult = data.items[0]; // Get the first search result
-            const newTask = {
+            // This function now returns an array of tasks
+            return data.items.map(item => {
+                const tier = 'Basic'; // Can be randomized if needed
+                return {
                 // Use a more unique ID to prevent collisions when generating tasks quickly
                 id: Date.now() + Math.floor(Math.random() * 1000),
                 type: taskType,
-                description: `Perform a task for: ${firstResult.title}`,
-                link: firstResult.link, 
+                    description: `Perform a task for: ${item.title}`,
+                    link: item.link, 
                 instructions: `Please leave a positive and relevant ${taskType.toLowerCase()}.`,
                 tier: tier,
                 status: 'unassigned'
-            };
-            return newTask;
+                };
+            });
         }
     } catch (error) {
         console.error('Error fetching new task from API:', error);
@@ -933,15 +944,23 @@ attachEventListeners() {
             button.textContent = 'Generating...';
 
             this.addNotification('Generating new tasks... Please wait.', 'info');
-            const newTasksPromises = [];
+            
             // Determine task type based on whether a location was provided
             const taskType = location ? 'Google Review' : 'YouTube Comment';
             const googleSearchApiKey = 'AIzaSyDYcHahEotRafzgRUXLyx1-hDM_WkxdZhs'; // This key is now isolated.
-            for (let i = 0; i < numToGenerate; i++) {
-                newTasksPromises.push(this.generateNewTaskFromAPI(taskType, category, location, googleSearchApiKey));
+
+            // Make one or two API calls to get the desired number of unique results
+            const newTasksPromises = [];
+            const firstBatchSize = Math.min(numToGenerate, 10);
+            newTasksPromises.push(this.generateNewTaskFromAPI(taskType, category, location, googleSearchApiKey, firstBatchSize, 1));
+
+            if (numToGenerate > 10) {
+                const secondBatchSize = numToGenerate - 10;
+                newTasksPromises.push(this.generateNewTaskFromAPI(taskType, category, location, googleSearchApiKey, secondBatchSize, 11));
             }
+
             const generatedTasks = await Promise.all(newTasksPromises);
-            const filteredTasks = generatedTasks.filter(task => task !== null);
+            const filteredTasks = generatedTasks.flat().filter(task => task !== null); // Flatten the array of arrays and filter nulls
 
             // Instead of adding to the marketplace, add to the admin's own task list.
             const updates = {};
@@ -989,6 +1008,11 @@ start(user) {
     userRef.on('value', (userSnapshot) => {
         this.appState = userSnapshot.val() || {};
         if (!this.appState) return; // Stop if there's no data
+
+        // --- This is the key fix ---
+        // Whenever the user's data changes (e.g., new tasks are added),
+        // re-render their personal task lists. This will update the admin's pool view.
+        this.renderTasks();
 
         this.updateBalanceUI(); // Always keep balance updated
 
