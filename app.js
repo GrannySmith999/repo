@@ -468,28 +468,25 @@ addFormElements(formId, elements) {
 populateAdminCategoryDropdown(targetForm) {
     if (!targetForm) return;
 
-    const existingSelect = targetForm.querySelector('select[name="category-select"]');
-    if (existingSelect) {
-        // Don't remove, just update options to avoid layout shifts
-    } else {
-        // If it doesn't exist, we'll add it. This part is tricky with current setup.
-        // Let's assume the form is pre-populated with placeholders.
-    }
-
-    // Get unique task types from the marketplace
+    // Get unique task types from the admin's unassigned task pool
     const adminTasks = this.appState.tasks ? Object.values(this.appState.tasks) : [];
     const categories = [...new Set(adminTasks.filter(t => t.status === 'unassigned').map(task => task.type))];
-
-    const select = document.createElement('select');
-    select.name = 'category-select';
 
     let options = '<option value="">-- Select a Category --</option>';
     categories.forEach(category => {
         options += `<option value="${category}">${category}</option>`;
     });
-    select.innerHTML = options;
 
-    // Instead of inserting, let's assume a placeholder div or that the form gets rebuilt
+    let select = targetForm.querySelector('select[name="category-select"]');
+    if (!select) {
+        // If the select element doesn't exist, create and insert it.
+        select = document.createElement('select');
+        select.name = 'category-select';
+        targetForm.insertBefore(select, targetForm.querySelector('label')); // Insert before the amount label
+    }
+    
+    select.innerHTML = options; // Populate with the latest categories
+
     const userSelect = targetForm.querySelector('select[name="user-select"]');
     if (userSelect && !existingSelect) {
         userSelect.parentNode.insertBefore(select, userSelect.nextSibling);
