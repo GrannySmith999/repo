@@ -157,7 +157,7 @@ renderTasks() {
     if (!hasPending) this.dom.pendingTaskList.innerHTML = '<p>You have no tasks pending review or approved.</p>';
     // Logic for rejected tasks can be added if a 'rejected' status is implemented
 }
-,
+
 
 renderMarketplaceTasks() {
     // Clear both user and admin marketplace lists before rendering
