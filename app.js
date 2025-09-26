@@ -456,8 +456,8 @@ populateAdminUserDropdown(targetForm) {
     select.innerHTML = options;
 
     // Add the dropdown to the form
-    const firstInput = form.querySelector('label');
-    form.insertBefore(select, firstInput);
+    const submitButton = form.querySelector('button');
+    form.insertBefore(select, submitButton);
 },
 addFormElements(formId, elements) {
     const form = document.getElementById(formId);
@@ -482,7 +482,7 @@ populateAdminCategoryDropdown(targetForm) {
         // If the select element doesn't exist, create and insert it.
         select = document.createElement('select');
         select.name = 'category-select';
-        targetForm.insertBefore(select, targetForm.querySelector('label')); // Insert before the amount label
+        targetForm.insertBefore(select, targetForm.querySelector('button')); // Insert before the submit button
     }
     
     select.innerHTML = options; // Populate with the latest categories
