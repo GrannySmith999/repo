@@ -146,7 +146,6 @@ renderTasks() {
         if (targetList) targetList.appendChild(taskEl);
     });
 
-    if (!hasInProgress) {
     // Check if there are any tasks in the 'available' list before showing a message.
     if (this.dom.availableTaskList.children.length === 0) {
         const message = this.appState.credits === 0 
@@ -1087,4 +1086,3 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
-
